@@ -50,11 +50,12 @@ class DashboardProvider extends ChangeNotifier {
         // Cache failure is non-critical
       }
     } on ApiException catch (e) {
+      debugPrint('[Dashboard] API error: ${e.statusCode} ${e.message}');
       _error = e;
-      // Try to load from cache
       await _loadCachedDashboard();
     } catch (e) {
-      _error = ApiException(message: 'Gagal memuat data dashboard.');
+      debugPrint('[Dashboard] Unexpected error: $e');
+      _error = ApiException(message: 'Gagal memuat data dashboard. $e');
       await _loadCachedDashboard();
     }
 

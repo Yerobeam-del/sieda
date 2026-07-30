@@ -1,3 +1,18 @@
+int _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+int? _parseIntNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
 class RekapitulasiModel {
   final int id;
   final int configYear;
@@ -21,14 +36,14 @@ class RekapitulasiModel {
 
   factory RekapitulasiModel.fromJson(Map<String, dynamic> json) {
     return RekapitulasiModel(
-      id: json['id'] ?? 0,
-      configYear: json['config_year'] ?? 0,
-      dusun: json['dusun'],
-      kegiatan: json['kegiatan'],
+      id: _parseInt(json['id']),
+      configYear: _parseInt(json['config_year']),
+      dusun: json['dusun']?.toString(),
+      kegiatan: json['kegiatan']?.toString(),
       volumeKegiatan: json['volume_kegiatan']?.toString(),
-      metode: json['metode'],
+      metode: json['metode']?.toString(),
       jumlahSasaran: json['jumlah_sasaran']?.toString(),
-      keterangan: json['keterangan'],
+      keterangan: json['keterangan']?.toString(),
     );
   }
 }
@@ -61,13 +76,13 @@ class DataUmumPKK {
 
   factory DataUmumPKK.fromJson(Map<String, dynamic> json) {
     return DataUmumPKK(
-      id: json['id'] ?? 0,
-      configYear: json['config_year'] ?? 0,
-      dusun: json['dusun'],
+      id: _parseInt(json['id']),
+      configYear: _parseInt(json['config_year']),
+      dusun: json['dusun']?.toString(),
       jumlahKeluarga: json['jumlah_keluarga']?.toString(),
       jumlahPenduduk: json['jumlah_penduduk']?.toString(),
       jumlahKader: json['jumlah_kader']?.toString(),
-      keterangan: json['keterangan'],
+      keterangan: json['keterangan']?.toString(),
     );
   }
 }
@@ -117,25 +132,25 @@ class CatatanKelahiranKematianModel {
 
   factory CatatanKelahiranKematianModel.fromJson(Map<String, dynamic> json) {
     return CatatanKelahiranKematianModel(
-      id: json['id'] ?? 0,
-      idWargaIbu: json['id_warga_ibu'],
-      namaIbu: json['nama_ibu'],
-      idWargaSuami: json['id_warga_suami'],
-      namaSuami: json['nama_suami'],
-      noKk: json['no_kk'],
-      idGroupDasawisma: json['id_group_dasawisma'],
-      statusIbu: json['status_ibu'],
-      tanggalHamil: json['tanggal_hamil'],
-      tanggalMelahirkan: json['tanggal_melahirkan'],
-      namaBayi: json['nama_bayi'],
-      jenisKelaminBayi: json['jenis_kelamin_bayi'],
-      tanggalLahirBayi: json['tanggal_lahir_bayi'],
-      akteKelahiran: json['akte_kelahiran'],
-      statusKematian: json['status_kematian'],
-      namaMeninggal: json['nama_meninggal'],
-      tanggalMeninggal: json['tanggal_meninggal'],
-      sebabMeninggal: json['sebab_meninggal'],
-      configYear: json['config_year'] ?? 0,
+      id: _parseInt(json['id']),
+      idWargaIbu: json['id_warga_ibu']?.toString(),
+      namaIbu: json['nama_ibu']?.toString(),
+      idWargaSuami: json['id_warga_suami']?.toString(),
+      namaSuami: json['nama_suami']?.toString(),
+      noKk: json['no_kk']?.toString(),
+      idGroupDasawisma: _parseIntNullable(json['id_group_dasawisma']),
+      statusIbu: json['status_ibu']?.toString(),
+      tanggalHamil: json['tanggal_hamil']?.toString(),
+      tanggalMelahirkan: json['tanggal_melahirkan']?.toString(),
+      namaBayi: json['nama_bayi']?.toString(),
+      jenisKelaminBayi: json['jenis_kelamin_bayi']?.toString(),
+      tanggalLahirBayi: json['tanggal_lahir_bayi']?.toString(),
+      akteKelahiran: json['akte_kelahiran']?.toString(),
+      statusKematian: json['status_kematian']?.toString(),
+      namaMeninggal: json['nama_meninggal']?.toString(),
+      tanggalMeninggal: json['tanggal_meninggal']?.toString(),
+      sebabMeninggal: json['sebab_meninggal']?.toString(),
+      configYear: _parseInt(json['config_year']),
     );
   }
 }

@@ -65,6 +65,7 @@ class CatatanProvider extends ChangeNotifier {
       _error = e;
       await _loadFromCache();
     } catch (e) {
+      debugPrint('[Catatan] Error loading list: $e');
       _error = ApiException(message: 'Gagal memuat catatan.');
       await _loadFromCache();
     }
@@ -111,6 +112,7 @@ class CatatanProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _error = e;
     } catch (e) {
+      debugPrint('[Catatan] Error loading detail: $e');
       _error = ApiException(message: 'Gagal memuat detail catatan.');
     }
 

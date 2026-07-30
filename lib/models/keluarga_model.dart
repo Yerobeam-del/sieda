@@ -1,5 +1,20 @@
 import 'penduduk_model.dart';
 
+int _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+int? _parseIntNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
 class KeluargaModel {
   final String noKk;
   final String? idKepalaKeluarga;
@@ -53,7 +68,7 @@ class KeluargaModel {
       noKk: json['no_kk'] ?? '',
       idKepalaKeluarga: json['id_kepala_keluarga']?.toString(),
       idKelompokDasawisma: json['id_kelompok_dasawisma']?.toString(),
-      configYear: json['config_year'] ?? 0,
+      configYear: _parseInt(json['config_year']),
       active: parseActive(json['active']),
       kepalaKeluarga: parseKepalaKeluarga(json['kepala_keluarga']),
       kelompokDasawisma: parseKelompok(json['kelompok_dasawisma']),
@@ -93,7 +108,7 @@ class KelompokDasawismaMini {
     }
 
     return KelompokDasawismaMini(
-      id: json['id'] ?? 0,
+      id: _parseInt(json['id']),
       nama: json['nama'] ?? '',
       dusun: getDusun(json['dusun']),
     );
@@ -117,11 +132,11 @@ class DasawismaKeluargaData {
 
   factory DasawismaKeluargaData.fromJson(Map<String, dynamic> json) {
     return DasawismaKeluargaData(
-      jumlahBalita: json['jumlah_balita'],
-      jumlahIbuHamil: json['jumlah_ibu_hamil'],
-      jumlahIbuMenyusui: json['jumlah_ibu_menyusui'],
-      jumlahStunting: json['jumlah_stunting'],
-      jumlahLansia: json['jumlah_lansia'],
+      jumlahBalita: _parseIntNullable(json['jumlah_balita']),
+      jumlahIbuHamil: _parseIntNullable(json['jumlah_ibu_hamil']),
+      jumlahIbuMenyusui: _parseIntNullable(json['jumlah_ibu_menyusui']),
+      jumlahStunting: _parseIntNullable(json['jumlah_stunting']),
+      jumlahLansia: _parseIntNullable(json['jumlah_lansia']),
     );
   }
 }

@@ -12,7 +12,6 @@ import '../../../services/activity_service.dart';
 import '../../../models/penduduk_model.dart';
 import '../../../models/reference_model.dart';
 import '../../../providers/reference_provider.dart';
-import '../../../widgets/location_picker_widget.dart';
 
 class PendudukFormScreen extends StatefulWidget {
   final PendudukModel? penduduk;
@@ -429,16 +428,6 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Location Picker — GPS + Mini Map
-              LocationPickerWidget(
-                addressInitialValue: _alamatController.text,
-                onAddressChanged: (v) {
-                  _alamatController.text = v;
-                  _alamatController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: v.length),
-                  );
-                },
-              ),
               const SizedBox(height: 20),
 
               // ============ BAGIAN 3: STATUS KELUARGA ============

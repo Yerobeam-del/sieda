@@ -1,3 +1,18 @@
+int _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+int? _parseIntNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
 class KelompokDasawismaModel {
   final int id;
   final String nama;
@@ -36,14 +51,14 @@ class KelompokDasawismaModel {
     }
 
     return KelompokDasawismaModel(
-      id: json['id'] ?? 0,
+      id: _parseInt(json['id']),
       nama: json['nama'] ?? '',
       namaKader: getKader(json['kader']),
-      idDusun: json['id_dusun'],
+      idDusun: _parseIntNullable(json['id_dusun']),
       dusun: getDusun(json['dusun']),
-      configYear: json['config_year'] ?? DateTime.now().year,
-      totalKeluarga: json['total_keluarga'],
-      totalAnggota: json['total_anggota'],
+      configYear: _parseInt(json['config_year']),
+      totalKeluarga: _parseIntNullable(json['total_keluarga']),
+      totalAnggota: _parseIntNullable(json['total_anggota']),
       active: parseActive(json['active']),
     );
   }
@@ -75,11 +90,11 @@ class RingkasanPerDusun {
   factory RingkasanPerDusun.fromJson(Map<String, dynamic> json) {
     // Support both snake_case and camelCase keys
     return RingkasanPerDusun(
-      id: json['dusun_id'] ?? json['id'] ?? 0,
+      id: _parseInt(json['dusun_id'] ?? json['id']),
       dusun: json['dusun_nama'] ?? json['dusun'] ?? '',
-      totalKelompok: json['total_kelompok'] ?? 0,
-      totalKeluarga: json['total_keluarga'] ?? 0,
-      totalPenduduk: json['total_penduduk'] ?? 0,
+      totalKelompok: _parseInt(json['total_kelompok']),
+      totalKeluarga: _parseInt(json['total_keluarga']),
+      totalPenduduk: _parseInt(json['total_penduduk']),
     );
   }
 }
@@ -109,15 +124,15 @@ class DasawismaKesehatanModel {
 
   factory DasawismaKesehatanModel.fromJson(Map<String, dynamic> json) {
     return DasawismaKesehatanModel(
-      id: json['id'],
+      id: _parseIntNullable(json['id']),
       kelompok: json['kelompok']?.toString(),
       dusun: json['dusun']?.toString(),
-      totalBalita: json['total_balita'] ?? 0,
-      ibuHamil: json['ibu_hamil'] ?? 0,
-      ibuMenyusui: json['ibu_menyusui'] ?? 0,
-      stunting: json['stunting'] ?? 0,
-      lansia: json['lansia'] ?? 0,
-      totalKeluarga: json['total_keluarga'] ?? 0,
+      totalBalita: _parseInt(json['total_balita']),
+      ibuHamil: _parseInt(json['ibu_hamil']),
+      ibuMenyusui: _parseInt(json['ibu_menyusui']),
+      stunting: _parseInt(json['stunting']),
+      lansia: _parseInt(json['lansia']),
+      totalKeluarga: _parseInt(json['total_keluarga']),
     );
   }
 }
@@ -181,21 +196,21 @@ class DasawismaKeluargaData {
 
     return DasawismaKeluargaData(
       noKK: json['no_kk'] ?? '',
-      configYear: json['config_year'] ?? DateTime.now().year,
-      jumlahKK: json['jumlah_kk'],
-      jumlahBalita: json['jumlah_balita'],
-      jumlahPus: json['jumlah_pus'],
-      jumlahWus: json['jumlah_wus'],
-      jumlahButa: json['jumlah_buta'],
-      jumlahIbuHamil: json['jumlah_ibu_hamil'],
-      jumlahIbuMenyusui: json['jumlah_ibu_menyusui'],
-      jumlahLansia: json['jumlah_lansia'],
+      configYear: _parseInt(json['config_year']),
+      jumlahKK: _parseIntNullable(json['jumlah_kk']),
+      jumlahBalita: _parseIntNullable(json['jumlah_balita']),
+      jumlahPus: _parseIntNullable(json['jumlah_pus']),
+      jumlahWus: _parseIntNullable(json['jumlah_wus']),
+      jumlahButa: _parseIntNullable(json['jumlah_buta']),
+      jumlahIbuHamil: _parseIntNullable(json['jumlah_ibu_hamil']),
+      jumlahIbuMenyusui: _parseIntNullable(json['jumlah_ibu_menyusui']),
+      jumlahLansia: _parseIntNullable(json['jumlah_lansia']),
       makananPokok: json['makanan_pokok']?.toString(),
       statusJamban: json['status_jamban']?.toString(),
-      jumlahGiziKurang: json['jumlah_gizi_kurang'],
-      jumlahGiziBuruk: json['jumlah_gizi_buruk'],
-      jumlahStunting: json['jumlah_stunting'],
-      jumlahDisabilitas: json['jumlah_disabilitas'],
+      jumlahGiziKurang: _parseIntNullable(json['jumlah_gizi_kurang']),
+      jumlahGiziBuruk: _parseIntNullable(json['jumlah_gizi_buruk']),
+      jumlahStunting: _parseIntNullable(json['jumlah_stunting']),
+      jumlahDisabilitas: _parseIntNullable(json['jumlah_disabilitas']),
       sumberAir: extractName(json['sumber_air']),
       statusTempatPembuanganSampah: json['status_tempat_pembuangan_sampah']?.toString(),
       statusSaluranPembuangan: json['status_saluran_pembuangan']?.toString(),
@@ -223,7 +238,7 @@ class DasawismaKeluargaData {
         'jumlah_gizi_buruk': jumlahGiziBuruk,
         'jumlah_stunting': jumlahStunting,
         'jumlah_disabilitas': jumlahDisabilitas,
-        'id_sumber_air': null, // Will be filled by form
+        'id_sumber_air': null,
         'status_tempat_pembuangan_sampah': statusTempatPembuanganSampah,
         'status_saluran_pembuangan': statusSaluranPembuangan,
         'status_sticker_p4k': statusStickerP4k,

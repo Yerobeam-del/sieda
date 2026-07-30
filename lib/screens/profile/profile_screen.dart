@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/helpers.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/connectivity_service.dart';
 import '../../services/sync_service.dart';
 import '../../database/local_database.dart';
@@ -206,64 +207,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSyncStatusCard(context),
               const SizedBox(height: 16),
 
-              Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: AppTheme.cardDecoration,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Informasi Akun', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 12),
-                      _profileRow('Username', user?.username ?? '-'),
-                      const Divider(height: 16),
-                      _profileRow('Email', user?.email ?? '-'),
-                      const Divider(height: 16),
-                      _profileRow('Role', user?.roleLabel ?? '-'),
-                      if (user?.desaName != null) ...[
+              // ── Theme Toggle ──
+              _buildThemeToggle(context),
+              const SizedBox(height: 16),
+
+  Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Informasi Akun', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 12),
+                        _profileRow('Username', user?.username ?? '-'),
                         const Divider(height: 16),
-                        _profileRow('Desa', user!.desaName!),
-                      ],
-                      if (user?.kecamatanName != null) ...[
+                        _profileRow('Email', user?.email ?? '-'),
                         const Divider(height: 16),
-                        _profileRow('Kecamatan', user!.kecamatanName!),
+                        _profileRow('Role', user?.roleLabel ?? '-'),
+                        if (user?.desaName != null) ...[
+                          const Divider(height: 16),
+                          _profileRow('Desa', user!.desaName!),
+                        ],
+                        if (user?.kecamatanName != null) ...[
+                          const Divider(height: 16),
+                          _profileRow('Kecamatan', user!.kecamatanName!),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 // Menu items
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: AppTheme.cardDecoration,
-                  child: Column(
-                    children: [
-                      _menuItem(
-                        context,
-                        icon: Icons.settings_outlined,
-                        title: 'Pengaturan Offline',
-                        color: AppTheme.textSecondary,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AdminScreen()),
+Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _menuItem(
+                          context,
+                          icon: Icons.settings_outlined,
+                          title: 'Pengaturan Offline',
+                          color: AppTheme.textSecondary,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AdminScreen()),
+                          ),
                         ),
-                      ),
-                      const Divider(height: 4),
-                      _menuItem(
-                        context,
-                        icon: Icons.logout_rounded,
-                        title: 'Logout',
-                        color: AppTheme.error,
-                        onTap: () => _showLogoutDialog(context),
-                      ),
-                      const Divider(height: 4),
-                      _menuItem(
-                        context,
-                        icon: Icons.logout_rounded,
-                        title: 'Logout dari Semua Perangkat',
-                        color: AppTheme.error,
-                        onTap: () => _showLogoutAllDialog(context),
-                      ),
-                    ],
+                        const Divider(height: 4),
+                        _menuItem(
+                          context,
+                          icon: Icons.logout_rounded,
+                          title: 'Logout',
+                          color: AppTheme.error,
+                          onTap: () => _showLogoutDialog(context),
+                        ),
+                        const Divider(height: 4),
+                        _menuItem(
+                          context,
+                          icon: Icons.logout_rounded,
+                          title: 'Logout dari Semua Perangkat',
+                          color: AppTheme.error,
+                          onTap: () => _showLogoutAllDialog(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -303,6 +320,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
       minLeadingWidth: 0,
       visualDensity: VisualDensity.compact,
     );
+  }
+
+  Widget _buildThemeToggle(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.palette_outlined, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Text('Tema', style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode_rounded, size: 18),
+                    label: Text('Terang', style: TextStyle(fontSize: 12)),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_rounded, size: 18),
+                    label: Text('Gelap', style: TextStyle(fontSize: 12)),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.settings_brightness_rounded, size: 18),
+                    label: Text('Sistem', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+                selected: {themeProvider.themeMode},
+                onSelectionChanged: (Set<ThemeMode> selected) {
+                  themeProvider.setThemeMode(selected.first);
+                },
+                showSelectedIcon: false,
+                style: ButtonStyle(
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _themeDescription(themeProvider.themeMode),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _themeDescription(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Selalu menggunakan tema terang.';
+      case ThemeMode.dark:
+        return 'Selalu menggunakan tema gelap.';
+      case ThemeMode.system:
+        return 'Mengikuti pengaturan tema perangkat.';
+    }
   }
 
   Widget _buildSyncStatusCard(BuildContext context) {

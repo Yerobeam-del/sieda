@@ -13,9 +13,13 @@ class GenderPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final total = ringkasan.totalLakiLaki + ringkasan.totalPerempuan;
     if (total == 0) {
-      return _emptyChart('Belum ada data penduduk');
+      return _emptyChart('Belum ada data penduduk',
+        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6),
+      );
     }
 
     return Column(
@@ -49,9 +53,11 @@ class GenderPieChart extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _legendItem(AppTheme.male, 'Laki-laki (${ringkasan.totalLakiLaki})'),
+            _legendItem(AppTheme.male, 'Laki-laki (${ringkasan.totalLakiLaki})',
+                textColor: cs.onSurfaceVariant),
             const SizedBox(width: 24),
-            _legendItem(AppTheme.female, 'Perempuan (${ringkasan.totalPerempuan})'),
+            _legendItem(AppTheme.female, 'Perempuan (${ringkasan.totalPerempuan})',
+                textColor: cs.onSurfaceVariant),
           ],
         ),
       ],
@@ -68,11 +74,21 @@ class DusunBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final data = perDusun;
-    if (data.isEmpty) return _emptyChart('Belum ada data dusun');
+    if (data.isEmpty) return _emptyChart('Belum ada data dusun',
+        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
 
     final maxValue = data.map((e) => e.totalKeluarga).reduce((a, b) => a > b ? a : b).toDouble();
-    final colors = [AppTheme.primary, AppTheme.info, AppTheme.success, AppTheme.warning, AppTheme.female, AppTheme.male];
+    final colors = [
+      cs.primary,
+      cs.tertiary,
+      AppTheme.success,
+      AppTheme.warning,
+      AppTheme.female,
+      AppTheme.male,
+    ];
 
     return SizedBox(
       height: data.length * 60.0 + 20,
@@ -96,7 +112,8 @@ class DusunBarChart extends StatelessWidget {
                     if (value == 0) return const SizedBox.shrink();
                     return Text(
                       '${value.toInt()}',
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textHint),
+                      style: TextStyle(fontSize: 10,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
                     );
                   },
                 ),
@@ -109,7 +126,7 @@ class DusunBarChart extends StatelessWidget {
               drawVerticalLine: false,
               horizontalInterval: maxValue / 4,
               getDrawingHorizontalLine: (value) => FlLine(
-                color: AppTheme.border,
+                color: cs.outlineVariant,
                 strokeWidth: 1,
               ),
             ),
@@ -149,19 +166,18 @@ class MonthlyLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     // Generate simulated monthly data based on real totals
-    // In production, this would come from a real API endpoint
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     final now = DateTime.now();
     final currentMonth = now.month;
 
-    // Simulate monthly progression using a sine wave
     final List<FlSpot> keluargaSpots = [];
     final List<FlSpot> pendudukSpots = [];
 
     for (int i = 0; i < currentMonth; i++) {
       final progress = (i + 1) / currentMonth;
-      // Use a realistic growth curve with slight variation
       final variation = sin((i + 1) * pi / currentMonth);
       final kkValue = (totalKeluarga * progress * (0.85 + 0.15 * variation)).roundToDouble();
       final pdValue = (totalPenduduk * progress * (0.85 + 0.15 * variation)).roundToDouble();
@@ -170,7 +186,9 @@ class MonthlyLineChart extends StatelessWidget {
       pendudukSpots.add(FlSpot(i.toDouble(), pdValue));
     }
 
-    if (keluargaSpots.isEmpty) return _emptyChart('Belum ada data');
+    if (keluargaSpots.isEmpty) return _emptyChart('Belum ada data',
+        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
 
     final maxY = pendudukSpots.isNotEmpty
         ? (pendudukSpots.last.y * 1.2)
@@ -189,7 +207,7 @@ class MonthlyLineChart extends StatelessWidget {
             drawVerticalLine: false,
             horizontalInterval: maxY / 4,
             getDrawingHorizontalLine: (value) => FlLine(
-              color: AppTheme.border,
+              color: cs.outlineVariant,
               strokeWidth: 1,
             ),
           ),
@@ -205,7 +223,9 @@ class MonthlyLineChart extends StatelessWidget {
                   if (idx < 0 || idx >= months.length) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(months[idx], style: const TextStyle(fontSize: 9, color: AppTheme.textHint)),
+                    child: Text(months[idx],
+                        style: TextStyle(fontSize: 9,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
                   );
                 },
               ),
@@ -216,7 +236,9 @@ class MonthlyLineChart extends StatelessWidget {
                 reservedSize: 36,
                 getTitlesWidget: (value, meta) {
                   if (value == 0) return const SizedBox.shrink();
-                  return Text('${value.toInt()}', style: const TextStyle(fontSize: 9, color: AppTheme.textHint));
+                  return Text('${value.toInt()}',
+                      style: TextStyle(fontSize: 9,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6)));
                 },
               ),
             ),
@@ -228,25 +250,25 @@ class MonthlyLineChart extends StatelessWidget {
             LineChartBarData(
               spots: keluargaSpots,
               isCurved: true,
-              color: AppTheme.primary,
+              color: cs.primary,
               barWidth: 2.5,
               isStrokeCapRound: true,
               dotData: FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: AppTheme.primary.withOpacity(0.08),
+                color: cs.primary.withValues(alpha: 0.08),
               ),
             ),
             LineChartBarData(
               spots: pendudukSpots,
               isCurved: true,
-              color: AppTheme.info,
+              color: cs.tertiary,
               barWidth: 2.5,
               isStrokeCapRound: true,
               dotData: FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: AppTheme.info.withOpacity(0.08),
+                color: cs.tertiary.withValues(alpha: 0.08),
               ),
             ),
           ],
@@ -258,7 +280,7 @@ class MonthlyLineChart extends StatelessWidget {
                   return LineTooltipItem(
                     '${isKeluarga ? "KK" : "Jiwa"}: ${spot.y.toInt()}',
                     TextStyle(
-                      color: isKeluarga ? AppTheme.primary : AppTheme.info,
+                      color: isKeluarga ? cs.primary : cs.tertiary,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -282,11 +304,21 @@ class DusunPendudukChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final data = perDusun;
-    if (data.isEmpty) return _emptyChart('Belum ada data');
+    if (data.isEmpty) return _emptyChart('Belum ada data',
+        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
 
     final maxValue = data.map((e) => e.totalPenduduk).reduce((a, b) => a > b ? a : b).toDouble();
-    final colors = [AppTheme.primary, AppTheme.info, AppTheme.success, AppTheme.warning, AppTheme.female, AppTheme.male];
+    final colors = [
+      cs.primary,
+      cs.tertiary,
+      AppTheme.success,
+      AppTheme.warning,
+      AppTheme.female,
+      AppTheme.male,
+    ];
 
     return SizedBox(
       height: data.length * 60.0 + 20,
@@ -310,7 +342,8 @@ class DusunPendudukChart extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         data[idx].dusun.length > 8 ? '${data[idx].dusun.substring(0, 8)}...' : data[idx].dusun,
-                        style: const TextStyle(fontSize: 9, color: AppTheme.textHint),
+                        style: TextStyle(fontSize: 9,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
                       ),
                     );
                   },
@@ -341,7 +374,7 @@ class DusunPendudukChart extends StatelessWidget {
                   ),
                   BarChartRodData(
                     toY: d.totalPenduduk.toDouble(),
-                    color: colors[index % colors.length].withOpacity(0.4),
+                    color: colors[index % colors.length].withValues(alpha: 0.4),
                     width: 16,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(4),
@@ -360,7 +393,7 @@ class DusunPendudukChart extends StatelessWidget {
 
 // ======================== HELPERS ========================
 
-Widget _legendItem(Color color, String label) {
+Widget _legendItem(Color color, String label, {required Color textColor}) {
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -370,21 +403,21 @@ Widget _legendItem(Color color, String label) {
         decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
       ),
       const SizedBox(width: 4),
-      Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+      Text(label, style: TextStyle(fontSize: 11, color: textColor)),
     ],
   );
 }
 
-Widget _emptyChart(String message) {
+Widget _emptyChart(String message, {required Color iconColor, required Color textColor}) {
   return SizedBox(
     height: 120,
     child: Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.bar_chart_rounded, size: 32, color: AppTheme.textHint.withOpacity(0.4)),
+          Icon(Icons.bar_chart_rounded, size: 32, color: iconColor),
           const SizedBox(height: 8),
-          Text(message, style: const TextStyle(fontSize: 12, color: AppTheme.textHint)),
+          Text(message, style: TextStyle(fontSize: 12, color: textColor)),
         ],
       ),
     ),

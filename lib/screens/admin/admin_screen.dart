@@ -262,10 +262,16 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _buildSyncStatusCard() {
     final isOnline = context.watch<ConnectivityService>().isOnline;
+    final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -354,6 +360,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -376,10 +383,15 @@ class _AdminScreenState extends State<AdminScreen> {
 
     final hasData = _pendingStats.values.any((c) => c > 0);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
-      child: hasData
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: hasData
           ? Column(
               children: _pendingStats.entries.map((entry) {
                 final label = entry.key;
@@ -433,6 +445,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
               ),
             ),
+            ),
     );
   }
 
@@ -457,12 +470,17 @@ class _AdminScreenState extends State<AdminScreen> {
       'cached_dasawisma_kelompok': Icons.groups_outlined,
     };
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
-      child: Column(
-        children: [
-          ..._cacheStats.entries.map((entry) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            ..._cacheStats.entries.map((entry) {
             final key = entry.key;
             final count = entry.value;
             final label = labels[key] ?? key;
@@ -507,6 +525,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ],
         ],
       ),
+      ),
     );
   }
 
@@ -533,9 +552,14 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildIntegritySection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -680,6 +704,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ],
         ],
       ),
+      ),
     );
   }
 
@@ -734,18 +759,23 @@ class _AdminScreenState extends State<AdminScreen> {
       'Sistem': AppTheme.textSecondary,
     };
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Log count + clear button
-          Row(
-            children: [
-              Icon(Icons.history_rounded, size: 16, color: AppTheme.textHint),
-              const SizedBox(width: 6),
-              Text('$_logCount entri', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Log count + clear button
+            Row(
+              children: [
+                Icon(Icons.history_rounded, size: 16, color: AppTheme.textHint),
+                const SizedBox(width: 6),
+                Text('$_logCount entri', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               const Spacer(),
               if (_activityLogs.isNotEmpty)
                 GestureDetector(
@@ -909,6 +939,7 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -928,9 +959,14 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildMaintenanceSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           // Clear pending
@@ -952,6 +988,7 @@ class _AdminScreenState extends State<AdminScreen> {
             onTap: _confirmResetAll,
           ),
         ],
+      ),
       ),
     );
   }

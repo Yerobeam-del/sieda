@@ -187,10 +187,15 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => KeluargaDetailScreen(noKk: k.noKk)),
       ),
-      child: Container(
+      child: Card(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: AppTheme.cardDecoration,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
         child: Row(
           children: [
             Container(
@@ -239,6 +244,7 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

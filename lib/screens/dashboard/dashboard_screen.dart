@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../services/weather_service.dart';
+import '../../services/location_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/error_display.dart';
@@ -33,24 +34,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadWeather() async {
-    final user = context.read<AuthProvider>().user;
-    final desa = user?.desaName ?? user?.kecamatanName ?? '';
-    if (desa.isEmpty) {
-      if (mounted) setState(() => _weatherLoading = false);
-      return;
-    }
-
     setState(() {
       _weatherLoading = true;
       _weatherError = null;
     });
 
-    final weather = await _weatherService.getWeather(desa);
+    final user = context.read<AuthProvider>().user;
+    final desa = user?.desaName ?? user?.kecamatanName ?? '';
+
+    WeatherData? weather;
+    final locationService = LocationService();
+    final position = await locationService.getCurrentPosition();
+
+    if (position != null) {
+      weather = await _weatherService.getWeatherByCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+    }
+
+    if ((weather == null || !weather.isValid) && desa.isNotEmpty) {
+      weather = await _weatherService.getWeather(desa);
+    }
+
     if (mounted) {
       setState(() {
         _weather = weather;
         _weatherLoading = false;
-        if (!weather.isValid && weather.description == 'Tidak tersedia') {
+        if (weather == null || (!weather.isValid && weather.description == 'Tidak tersedia')) {
           _weatherError = 'Gagal memuat cuaca';
         }
       });
@@ -60,46 +71,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboardProv = context.watch<DashboardProvider>();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
       body: RefreshIndicator(
-        color: AppTheme.primary,
+        color: cs.primary,
         onRefresh: () => dashboardProv.loadDashboard(),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Header
+            // ── Header Premium ──
             SliverAppBar(
-              expandedHeight: 140,
+              expandedHeight: 200,
               pinned: false,
               automaticallyImplyLeading: false,
               flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: AppTheme.gradientHeader,
-                  padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Dashboard SIEDA',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Gradient background
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF0F766E),
+                            const Color(0xFF0D9488),
+                            const Color(0xFF14B8A6),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          stops: const [0.0, 0.45, 1.0],
+                        ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Sistem Informasi e-Dasawisma',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white.withOpacity(0.8)),
+                    ),
+                    // Decorative curves overlay
+                    Positioned(
+                      top: -40,
+                      right: -40,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      // Desa & Kecamatan info
-                      _buildDesaInfo(context),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      bottom: -60,
+                      left: -20,
+                      child: Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.04),
+                        ),
+                      ),
+                    ),
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 52, 24, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          // Icon + greeting
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.dashboard_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Dashboard SIEDA',
+                                      style: theme.textTheme.displaySmall?.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Sistem Informasi e-Dasawisma',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.white.withValues(alpha: 0.75),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          // Desa & Kecamatan info
+                          _buildDesaInfo(context, cs),
+                        ],
+                      ),
+                    ),
+                    // Subtle bottom fade
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0.08),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
 
-            // Content
+            // ── Content ──
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
@@ -112,15 +219,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onRetry: () => dashboardProv.loadDashboard(),
                     )
                   else if (dashboardProv.dashboard != null) ...[
-                    // Ringkasan Cards
                     _buildRingkasanSection(context, dashboardProv),
                     const SizedBox(height: 16),
 
-                    // Catatan Kelahiran & Kematian — Ringkasan
                     _buildCatatanSection(context, dashboardProv),
                     const SizedBox(height: 16),
 
-                    // Weather Card
                     WeatherCard(
                       weather: _weather,
                       isLoading: _weatherLoading,
@@ -129,7 +233,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Pie Chart: Gender Distribution
                     _buildChartCard(
                       context,
                       'Perbandingan Gender',
@@ -138,7 +241,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Bar Chart: KK per Dusun
                     if (dashboardProv.dashboard!.perDusun.isNotEmpty)
                       _buildChartCard(
                         context,
@@ -154,7 +256,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (dashboardProv.dashboard!.perDusun.isNotEmpty)
                       const SizedBox(height: 16),
 
-                    // Line Chart: Monthly Progress
                     _buildChartCard(
                       context,
                       'Perkembangan Data (Bulanan)',
@@ -174,9 +275,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _legendDot(AppTheme.primary, 'KK'),
-                              const SizedBox(width: 24),
-                              _legendDot(AppTheme.info, 'Jiwa'),
+                            _legendDot(cs.primary, 'KK'),
+                            const SizedBox(width: 24),
+                            _legendDot(AppTheme.info, 'Jiwa'),
                             ],
                           ),
                         ],
@@ -184,7 +285,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Tab Bar: Detail per Dusun + Kesehatan
                     _buildPerDusunSection(context, dashboardProv),
                     const SizedBox(height: 16),
                     _buildKesehatanSection(context, dashboardProv),
@@ -192,24 +292,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   if (dashboardProv.apiMessage != null && dashboardProv.dashboard != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.info.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.only(top: 8, bottom: 16),
+                      child: Card(
+                        color: cs.secondaryContainer.withValues(alpha: 0.5),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.info),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                dashboardProv.apiMessage!,
-                                style: const TextStyle(fontSize: 12, color: AppTheme.info),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, size: 18, color: cs.onSecondaryContainer),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  dashboardProv.apiMessage!,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: cs.onSecondaryContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -224,48 +331,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // ── Chart Card using M3 Card widget ──
   Widget _buildChartCard(BuildContext context, String title, IconData icon, Widget chart) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 18, color: cs.primary),
                 ),
-                child: Icon(icon, size: 18, color: AppTheme.primary),
-              ),
-              const SizedBox(width: 10),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-            ],
-          ),
-          const SizedBox(height: 12),
-          chart,
-        ],
+                const SizedBox(width: 10),
+                Text(title, style: theme.textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 14),
+            chart,
+          ],
+        ),
       ),
     );
   }
 
+  // ── Ringkasan ──
   Widget _buildRingkasanSection(BuildContext context, DashboardProvider prov) {
     final data = prov.dashboard!;
     final ringkasan = data.ringkasan;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.analytics_rounded, color: AppTheme.primary, size: 20),
+            Icon(Icons.analytics_rounded, color: cs.primary, size: 20),
             const SizedBox(width: 8),
-            Text('Ringkasan', style: Theme.of(context).textTheme.titleLarge),
+            Text('Ringkasan', style: theme.textTheme.titleLarge),
             const Spacer(),
-            Text('Tahun ${data.configYear}', style: const TextStyle(fontSize: 12, color: AppTheme.textHint)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Tahun ${data.configYear}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary,
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -281,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               title: 'Keluarga',
               value: ringkasan.totalKeluarga.toString(),
               icon: Icons.family_restroom_rounded,
-              color: AppTheme.primary,
+              color: cs.primary,
             ),
             StatCard(
               title: 'Penduduk',
@@ -307,10 +441,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // ── Ibu & Anak Catatan ──
   Widget _buildCatatanSection(BuildContext context, DashboardProvider prov) {
     final cs = prov.dashboard!.catatanSummary;
+    final theme = Theme.of(context);
 
-    // Only show if there is at least some data
     if (cs.totalCatatan == 0 && cs.hamilBulanIni == 0) return const SizedBox.shrink();
 
     return Column(
@@ -321,16 +456,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.female.withOpacity(0.1),
+                color: AppTheme.female.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.child_care_rounded, size: 18, color: AppTheme.female),
             ),
             const SizedBox(width: 10),
-            Text('Ibu & Anak', style: Theme.of(context).textTheme.titleLarge),
+            Text('Ibu & Anak', style: theme.textTheme.titleLarge),
             const Spacer(),
             if (cs.totalCatatan > 0)
-              Text('${cs.totalCatatan} catatan', style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+              Text(
+                '${cs.totalCatatan} catatan',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 12),
@@ -377,9 +518,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.15)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -396,7 +537,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: color.withOpacity(0.8)),
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -404,69 +545,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // ── Detail per Dusun ──
   Widget _buildPerDusunSection(BuildContext context, DashboardProvider prov) {
     final data = prov.dashboard!;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.location_on_rounded, color: AppTheme.primary, size: 20),
+            Icon(Icons.location_on_rounded, color: cs.primary, size: 20),
             const SizedBox(width: 8),
-            Text('Detail per Dusun', style: Theme.of(context).textTheme.titleLarge),
+            Text('Detail per Dusun', style: theme.textTheme.titleLarge),
           ],
         ),
         const SizedBox(height: 12),
-        ...data.perDusun.map((dusun) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: AppTheme.cardDecoration,
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${dusun.id}',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppTheme.primary),
+        ...data.perDusun.map((dusun) => Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${dusun.id}',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(dusun.dusun, style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${dusun.totalKeluarga} KK | ${dusun.totalPenduduk} Jiwa',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dusun.dusun,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${dusun.totalKeluarga} KK  ·  ${dusun.totalPenduduk} Jiwa',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+                  ],
+                ),
               ),
             )),
         if (data.perDusun.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: DusunPendudukChart(perDusun: data.perDusun),
+            child: Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Grafik Penduduk per Dusun',
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    DusunPendudukChart(perDusun: data.perDusun),
+                  ],
+                ),
+              ),
+            ),
           ),
       ],
     );
   }
 
+  // ── Data Kesehatan ──
   Widget _buildKesehatanSection(BuildContext context, DashboardProvider prov) {
     final data = prov.dashboard!;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     if (data.kesehatan.isEmpty) return const SizedBox.shrink();
 
@@ -475,61 +656,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Row(
           children: [
-            const Icon(Icons.favorite_rounded, color: AppTheme.primary, size: 20),
+            Icon(Icons.favorite_rounded, color: cs.primary, size: 20),
             const SizedBox(width: 8),
-            Text('Data Kesehatan', style: Theme.of(context).textTheme.titleLarge),
+            Text('Data Kesehatan', style: theme.textTheme.titleLarge),
           ],
         ),
         const SizedBox(height: 12),
-        ...data.kesehatan.map((k) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: AppTheme.cardDecoration,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(k.dusun, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _kesehatanChip('Balita', k.totalBalita, Colors.orange),
-                      const SizedBox(width: 6),
-                      _kesehatanChip('Bumil', k.ibuHamil, AppTheme.female),
-                      const SizedBox(width: 6),
-                      _kesehatanChip('Stunting', k.stunting, AppTheme.error),
-                    ],
-                  ),
-                ],
+        ...data.kesehatan.map((k) => Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: cs.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          k.dusun,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _kesehatanChip('Balita', k.totalBalita, Colors.orange),
+                        const SizedBox(width: 8),
+                        _kesehatanChip('Bumil', k.ibuHamil, AppTheme.female),
+                        const SizedBox(width: 8),
+                        _kesehatanChip('Stunting', k.stunting, AppTheme.error),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             )),
       ],
     );
   }
 
-  Widget _buildDesaInfo(BuildContext context) {
+  // ── Desa Info Chip ──
+  Widget _buildDesaInfo(BuildContext context, ColorScheme cs) {
     final user = context.watch<AuthProvider>().user;
     if (user?.desaName == null && user?.kecamatanName == null) {
       return const SizedBox.shrink();
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.location_on_rounded, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
+          Icon(Icons.location_on_rounded, size: 13, color: Colors.white.withValues(alpha: 0.9)),
+          const SizedBox(width: 6),
           Flexible(
             child: Text(
               [
                 if (user?.desaName != null) user!.desaName!,
                 if (user?.kecamatanName != null) 'Kec. ${user!.kecamatanName!}',
               ].join(' · '),
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -539,19 +750,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // ── Helper widgets ──
+
   Widget _kesehatanChip(String label, int value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$value', style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+          Text(
+            '$value',
+            style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14),
+          ),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 11)),
+          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -561,9 +777,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }

@@ -1,3 +1,21 @@
+int _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+int? _parseIntNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) {
+    final parsed = int.tryParse(value);
+    return parsed;
+  }
+  return null;
+}
+
 class CatatanKelahiranKematianModel {
   final int id;
   final String? idWargaIbu;
@@ -5,6 +23,7 @@ class CatatanKelahiranKematianModel {
   final String? noKk;
   final int? idGroupDasawisma;
   final String? statusIbu;
+  final int? bulanHamil;
   final String? tanggalHamil;
   final String? tanggalMelahirkan;
   final String? tanggalNifasSelesai;
@@ -43,6 +62,7 @@ class CatatanKelahiranKematianModel {
     this.noKk,
     this.idGroupDasawisma,
     this.statusIbu,
+    this.bulanHamil,
     this.tanggalHamil,
     this.tanggalMelahirkan,
     this.tanggalNifasSelesai,
@@ -108,14 +128,13 @@ class CatatanKelahiranKematianModel {
     final fallbackNamaSuami = json['nama_suami']?.toString() ?? namaSuami;
 
     return CatatanKelahiranKematianModel(
-      id: json['id'] ?? 0,
+      id: _parseInt(json['id']),
       idWargaIbu: json['id_warga_ibu']?.toString(),
       idWargaSuami: json['id_warga_suami']?.toString(),
       noKk: json['no_kk']?.toString(),
-      idGroupDasawisma: json['id_group_dasawisma'] is int
-          ? json['id_group_dasawisma']
-          : int.tryParse(json['id_group_dasawisma']?.toString() ?? ''),
+      idGroupDasawisma: _parseInt(json['id_group_dasawisma']),
       statusIbu: json['status_ibu']?.toString(),
+      bulanHamil: _parseIntNullable(json['bulan_hamil']),
       tanggalHamil: json['tanggal_hamil']?.toString(),
       tanggalMelahirkan: json['tanggal_melahirkan']?.toString(),
       tanggalNifasSelesai: json['tanggal_nifas_selesai']?.toString(),
@@ -129,9 +148,9 @@ class CatatanKelahiranKematianModel {
       jenisKelaminMeninggal: json['jenis_kelamin_meninggal']?.toString(),
       tanggalMeninggal: json['tanggal_meninggal']?.toString(),
       sebabMeninggal: json['sebab_meninggal']?.toString(),
-      configYear: json['config_year'] ?? DateTime.now().year,
+      configYear: json['config_year'] != null ? _parseInt(json['config_year']) : DateTime.now().year,
       keterangan: json['keterangan']?.toString(),
-      active: json['active'] == 1 || json['active'] == true,
+      active: json['active'] == 1 || json['active'] == true || json['active'] == '1',
       namaIbu: fallbackNamaIbu,
       nikIbu: nikIbu,
       namaSuami: fallbackNamaSuami,
@@ -148,6 +167,7 @@ class CatatanKelahiranKematianModel {
         'no_kk': noKk,
         'id_group_dasawisma': idGroupDasawisma,
         'status_ibu': statusIbu,
+        'bulan_hamil': bulanHamil,
         'tanggal_hamil': tanggalHamil,
         'tanggal_melahirkan': tanggalMelahirkan,
         'tanggal_nifas_selesai': tanggalNifasSelesai,

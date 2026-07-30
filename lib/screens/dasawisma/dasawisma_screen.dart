@@ -150,7 +150,6 @@ class _KelompokTab extends StatelessWidget {
       onRefresh: () => prov.loadKelompok(refresh: true),
       child: CustomScrollView(
         slivers: [
-          // Filter dusun
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -165,7 +164,6 @@ class _KelompokTab extends StatelessWidget {
               ),
             ),
           ),
-          // List kelompok
           prov.kelompokList.isEmpty
               ? SliverFillRemaining(
                   child: EmptyState(icon: Icons.groups_outlined, title: 'Belum ada kelompok', subtitle: 'Tekan + untuk menambah'),
@@ -213,53 +211,60 @@ class _KelompokTab extends StatelessWidget {
 }
 
 Widget _kelompokCard(BuildContext context, KelompokDasawismaModel k, void Function(KelompokDasawismaModel)? onTap) {
+  final cs = Theme.of(context).colorScheme;
   return GestureDetector(
     onTap: () => onTap?.call(k),
-    child: Container(
+    child: Card(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: AppTheme.cardDecoration,
-      child: Row(
-        children: [
-          Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.groups_rounded, color: AppTheme.primary, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(k.nama, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (k.dusun != null) ...[
-                      const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textHint),
-                      const SizedBox(width: 4),
-                      Text(k.dusun!, style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
-                      const SizedBox(width: 10),
-                    ],
-                    if (k.namaKader != null) ...[
-                      const Icon(Icons.person_outline, size: 12, color: AppTheme.textHint),
-                      const SizedBox(width: 4),
-                      Text(k.namaKader!, style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (k.totalKeluarga != null)
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-              child: Text('${k.totalKeluarga} KK', style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+              width: 48, height: 48,
+              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.groups_rounded, color: AppTheme.primary, size: 24),
             ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(k.nama, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (k.dusun != null) ...[
+                        const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textHint),
+                        const SizedBox(width: 4),
+                        Text(k.dusun!, style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                        const SizedBox(width: 10),
+                      ],
+                      if (k.namaKader != null) ...[
+                        const Icon(Icons.person_outline, size: 12, color: AppTheme.textHint),
+                        const SizedBox(width: 4),
+                        Text(k.namaKader!, style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (k.totalKeluarga != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text('${k.totalKeluarga} KK', style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+              ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
+          ],
+        ),
       ),
     ),
   );
@@ -271,6 +276,7 @@ class _RingkasanTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<DasawismaProvider>();
+    final cs = Theme.of(context).colorScheme;
 
     if (prov.isLoading && prov.ringkasanList.isEmpty) return const LoadingWidget();
     if (prov.ringkasanList.isEmpty) return const EmptyState(icon: Icons.analytics_outlined, title: 'Belum ada data ringkasan');
@@ -283,45 +289,51 @@ class _RingkasanTab extends StatelessWidget {
         itemCount: prov.ringkasanList.length,
         itemBuilder: (context, index) {
           final r = prov.ringkasanList[index];
-          return Container(
+          return Card(
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(16),
-            decoration: AppTheme.cardDecoration,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                      child: Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(r.dusun, style: Theme.of(context).textTheme.titleMedium),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _chip('${r.totalKelompok}', 'Kelompok', AppTheme.primary),
-                    const SizedBox(width: 8),
-                    _chip('${r.totalKeluarga}', 'KK', AppTheme.info),
-                    const SizedBox(width: 8),
-                    _chip('${r.totalPenduduk}', 'Jiwa', AppTheme.success),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: prov.ringkasanList.isNotEmpty ? (r.totalKeluarga / (prov.ringkasanList.map((e) => e.totalKeluarga).reduce((a, b) => a > b ? a : b)).toDouble()) : 0,
-                    backgroundColor: AppTheme.primary.withOpacity(0.08),
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary.withOpacity(0.5)),
-                    minHeight: 4,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(r.dusun, style: Theme.of(context).textTheme.titleMedium),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _chip('${r.totalKelompok}', 'Kelompok', AppTheme.primary),
+                      const SizedBox(width: 8),
+                      _chip('${r.totalKeluarga}', 'KK', AppTheme.info),
+                      const SizedBox(width: 8),
+                      _chip('${r.totalPenduduk}', 'Jiwa', AppTheme.success),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: prov.ringkasanList.isNotEmpty ? (r.totalKeluarga / (prov.ringkasanList.map((e) => e.totalKeluarga).reduce((a, b) => a > b ? a : b)).toDouble()) : 0,
+                      backgroundColor: AppTheme.primary.withOpacity(0.08),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary.withOpacity(0.5)),
+                      minHeight: 4,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -344,6 +356,7 @@ class _KesehatanTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<DasawismaProvider>();
+    final cs = Theme.of(context).colorScheme;
 
     if (prov.isLoading && prov.recapKesehatanList.isEmpty) return const LoadingWidget();
     if (prov.recapKesehatanList.isEmpty) return const EmptyState(icon: Icons.health_and_safety_outlined, title: 'Belum ada data kesehatan');
@@ -358,55 +371,61 @@ class _KesehatanTab extends StatelessWidget {
           final k = prov.recapKesehatanList[index];
           return StaggeredListAnimation(
             index: index,
-            child: Container(
+            child: Card(
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(16),
-              decoration: AppTheme.cardDecoration,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.health_and_safety_rounded, color: AppTheme.success, size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(k.kelompok ?? 'Kelompok ${index + 1}', style: Theme.of(context).textTheme.titleMedium),
-                            if (k.dusun != null) Text(k.dusun!, style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
-                          ],
-                        ),
-                      ),
-                      Text('${k.totalKeluarga} KK', style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _healthIndicator('Balita', k.totalBalita, Icons.child_care_rounded, Colors.orange),
-                      _healthIndicator('Bumil', k.ibuHamil, Icons.favorite_rounded, AppTheme.female),
-                      _healthIndicator('Stunting', k.stunting, Icons.warning_rounded, AppTheme.error),
-                      _healthIndicator('Lansia', k.lansia, Icons.elderly_rounded, AppTheme.info),
-                    ],
-                  ),
-                  if (k.ibuMenyusui > 0) ...[
-                    const SizedBox(height: 8),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _healthIndicator('Menyusui', k.ibuMenyusui, Icons.child_friendly_rounded, AppTheme.success),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.health_and_safety_rounded, color: AppTheme.success, size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(k.kelompok ?? 'Kelompok ${index + 1}', style: Theme.of(context).textTheme.titleMedium),
+                              if (k.dusun != null) Text(k.dusun!, style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                            ],
+                          ),
+                        ),
+                        Text('${k.totalKeluarga} KK', style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600)),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _healthIndicator('Balita', k.totalBalita, Icons.child_care_rounded, Colors.orange),
+                        _healthIndicator('Bumil', k.ibuHamil, Icons.favorite_rounded, AppTheme.female),
+                        _healthIndicator('Stunting', k.stunting, Icons.warning_rounded, AppTheme.error),
+                        _healthIndicator('Lansia', k.lansia, Icons.elderly_rounded, AppTheme.info),
+                      ],
+                    ),
+                    if (k.ibuMenyusui > 0) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _healthIndicator('Menyusui', k.ibuMenyusui, Icons.child_friendly_rounded, AppTheme.success),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           );

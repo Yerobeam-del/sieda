@@ -128,22 +128,27 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
           const SizedBox(height: 24),
 
           // Info card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: AppTheme.cardDecoration,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Informasi Kelompok', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                _infoRow('Nama', k.nama),
-                _infoRow('Dusun', k.dusun ?? '-'),
-                _infoRow('Kader', k.namaKader ?? '-'),
-                _infoRow('Tahun', k.configYear.toString()),
-                _infoRow('Total KK', '${k.totalKeluarga ?? 0}'),
-                _infoRow('Total Anggota', '${k.totalAnggota ?? 0}'),
-              ],
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Informasi Kelompok', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  _infoRow('Nama', k.nama),
+                  _infoRow('Dusun', k.dusun ?? '-'),
+                  _infoRow('Kader', k.namaKader ?? '-'),
+                  _infoRow('Tahun', k.configYear.toString()),
+                  _infoRow('Total KK', '${k.totalKeluarga ?? 0}'),
+                  _infoRow('Total Anggota', '${k.totalAnggota ?? 0}'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 32),

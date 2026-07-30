@@ -19,33 +19,22 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   int _pendingSyncCount = 0;
-  late AnimationController _fabAnimationController;
 
-  final List<Widget> _screens = [
-    const DashboardScreen(),
-    const PendudukListScreen(),
-    const KeluargaListScreen(),
-    const CatatanListScreen(),
-    const ProfileScreen(),
+  final List<Widget> _screens = const [
+    DashboardScreen(),
+    PendudukListScreen(),
+    KeluargaListScreen(),
+    CatatanListScreen(),
+    ProfileScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
-    _fabAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
     _loadPendingCount();
-  }
-
-  @override
-  void dispose() {
-    _fabAnimationController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadPendingCount() async {
@@ -72,9 +61,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               Text('Tidak ada koneksi internet.'),
             ],
           ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -83,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     final syncService = SyncService(connectivity);
     final result = await syncService.syncAll();
-
     await _loadPendingCount();
 
     if (!mounted) return;
@@ -101,10 +86,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         backgroundColor: result.failed > 0 ? AppTheme.warning : AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -112,226 +93,123 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: ConnectivityBanner(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: IndexedStack(
+            key: ValueKey(_currentIndex),
+            index: _currentIndex,
+            children: _screens,
+          ),
         ),
       ),
-      bottomNavigationBar: _buildAnimatedNavBar(context),
-      floatingActionButton: _currentIndex == 4
-          ? FloatingActionButton(
-              onPressed: _syncData,
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
-              tooltip: 'Sinkronisasi Data',
-              child: _pendingSyncCount > 0
-                  ? Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(Icons.sync_rounded),
-                        Positioned(
-                          top: -4,
-                          right: -6,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppTheme.error,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              '$_pendingSyncCount',
-                              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : const Icon(Icons.cloud_done_rounded),
-            )
-          : _currentIndex == 0
-              ? FloatingActionButton.small(
-                  onPressed: () {
-                    final dashboard = context.read<DashboardProvider>();
-                    dashboard.loadDashboard();
-                  },
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.primary,
-                  tooltip: 'Refresh Dashboard',
-                  child: const Icon(Icons.refresh_rounded),
-                )
-              : null,
+      bottomNavigationBar: _buildNavigationBar(context),
+      floatingActionButton: _buildFab(context),
     );
   }
 
-  Widget _buildAnimatedNavBar(BuildContext context) {
+  Widget? _buildFab(BuildContext context) {
+    switch (_currentIndex) {
+      case 4: // Profile — sync button
+        return FloatingActionButton(
+          onPressed: _syncData,
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          tooltip: 'Sinkronisasi Data',
+          child: _pendingSyncCount > 0
+              ? Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.sync_rounded),
+                    Positioned(
+                      top: -4,
+                      right: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$_pendingSyncCount',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : const Icon(Icons.cloud_done_rounded),
+        );
+      case 0: // Dashboard — refresh
+        return FloatingActionButton.small(
+          onPressed: () {
+            context.read<DashboardProvider>().loadDashboard();
+          },
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primary,
+          tooltip: 'Refresh Dashboard',
+          child: const Icon(Icons.refresh_rounded),
+        );
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildNavigationBar(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 24,
             offset: const Offset(0, -4),
           ),
         ],
       ),
       child: SafeArea(
+        top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_navItems.length, (index) {
-              final item = _navItems[index];
-              final isActive = _currentIndex == index;
-              return _NavBarItem(
-                icon: isActive ? item.activeIcon : item.icon,
-                label: item.label,
-                isActive: isActive,
-                onTap: () {
-                  setState(() => _currentIndex = index);
-                },
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static const _navItems = [
-    _NavItemData(
-      icon: Icons.dashboard_outlined,
-      activeIcon: Icons.dashboard_rounded,
-      label: 'Dashboard',
-    ),
-    _NavItemData(
-      icon: Icons.people_outline_rounded,
-      activeIcon: Icons.people_rounded,
-      label: 'Penduduk',
-    ),
-    _NavItemData(
-      icon: Icons.family_restroom_outlined,
-      activeIcon: Icons.family_restroom,
-      label: 'Keluarga',
-    ),
-    _NavItemData(
-      icon: Icons.baby_changing_station_rounded,
-      activeIcon: Icons.baby_changing_station_rounded,
-      label: 'Ibu & Anak',
-    ),
-    _NavItemData(
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'Profil',
-    ),
-  ];
-}
-
-class _NavItemData {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  const _NavItemData({required this.icon, required this.activeIcon, required this.label});
-}
-
-class _NavBarItem extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _NavBarItem({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  State<_NavBarItem> createState() => _NavBarItemState();
-}
-
-class _NavBarItemState extends State<_NavBarItem> with SingleTickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void didUpdateWidget(_NavBarItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isActive && !oldWidget.isActive) {
-      _scaleController.forward().then((_) => _scaleController.reverse());
-    }
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _scaleController.forward(),
-      onTapUp: (_) {
-        _scaleController.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _scaleController.reverse(),
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: widget.isActive ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                transitionBuilder: (child, animation) => ScaleTransition(
-                  scale: animation,
-                  child: child,
-                ),
-                child: Icon(
-                  widget.icon,
-                  key: ValueKey(widget.isActive),
-                  size: 22,
-                  color: widget.isActive ? AppTheme.primary : AppTheme.textHint,
-                ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() => _currentIndex = index);
+            },
+            animationDuration: const Duration(milliseconds: 400),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.dashboard_outlined),
+                selectedIcon: Icon(Icons.dashboard_rounded),
+                label: 'Dashboard',
               ),
-              if (widget.isActive) ...[
-                const SizedBox(width: 6),
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ],
+              NavigationDestination(
+                icon: Icon(Icons.people_outline_rounded),
+                selectedIcon: Icon(Icons.people_rounded),
+                label: 'Penduduk',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.family_restroom_outlined),
+                selectedIcon: Icon(Icons.family_restroom),
+                label: 'Keluarga',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.baby_changing_station_outlined),
+                selectedIcon: Icon(Icons.baby_changing_station_rounded),
+                label: 'Ibu & Anak',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                selectedIcon: Icon(Icons.person_rounded),
+                label: 'Profil',
+              ),
             ],
           ),
         ),

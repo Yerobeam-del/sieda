@@ -11,7 +11,6 @@ import '../../../services/activity_service.dart';
 import '../../../models/keluarga_model.dart';
 import '../../../models/reference_model.dart';
 import '../../../providers/reference_provider.dart';
-import '../../../widgets/location_picker_widget.dart';
 
 class KeluargaFormScreen extends StatefulWidget {
   final KeluargaModel? keluarga;
@@ -280,13 +279,6 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
                 ),
               const SizedBox(height: 16),
 
-              // Location Picker — GPS + Mini Map
-              const LocationPickerWidget(),
-              const SizedBox(height: 4),
-              Text(
-                'Lokasi akan terisi otomatis saat deteksi GPS di form penduduk.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHint, fontStyle: FontStyle.italic),
-              ),
               const SizedBox(height: 24),
 
               // Submit

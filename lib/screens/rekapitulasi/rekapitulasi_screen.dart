@@ -102,6 +102,7 @@ class _DataUmumTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<RekapitulasiProvider>();
+    final cs = Theme.of(context).colorScheme;
 
     if (prov.isLoading) return const LoadingWidget();
     if (prov.error != null) return ErrorDisplay(error: prov.error, onRetry: () => prov.loadDataUmum());
@@ -115,25 +116,31 @@ class _DataUmumTab extends StatelessWidget {
         itemCount: prov.dataUmum.length,
         itemBuilder: (context, index) {
           final d = prov.dataUmum[index];
-          return Container(
+          return Card(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: AppTheme.cardDecoration,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, color: AppTheme.primary, size: 18),
-                    const SizedBox(width: 6),
-                    Text(d.dusun ?? 'Dusun ${index + 1}', style: Theme.of(context).textTheme.titleMedium),
-                  ],
-                ),
-                const Divider(height: 16),
-                _dataRow('Jumlah Keluarga', d.jumlahKeluarga ?? '0'),
-                _dataRow('Jumlah Penduduk', d.jumlahPenduduk ?? '0'),
-                _dataRow('Jumlah Kader', d.jumlahKader ?? '0'),
-              ],
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, color: AppTheme.primary, size: 18),
+                      const SizedBox(width: 6),
+                      Text(d.dusun ?? 'Dusun ${index + 1}', style: Theme.of(context).textTheme.titleMedium),
+                    ],
+                  ),
+                  const Divider(height: 16),
+                  _dataRow('Jumlah Keluarga', d.jumlahKeluarga ?? '0'),
+                  _dataRow('Jumlah Penduduk', d.jumlahPenduduk ?? '0'),
+                  _dataRow('Jumlah Kader', d.jumlahKader ?? '0'),
+                ],
+              ),
             ),
           );
         },
@@ -163,6 +170,7 @@ class _PokjaTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<RekapitulasiProvider>();
+    final cs = Theme.of(context).colorScheme;
 
     List<RekapitulasiModel> data;
     Future<void> Function() loadFn;
@@ -197,27 +205,33 @@ class _PokjaTab extends StatelessWidget {
         itemCount: data.length,
         itemBuilder: (context, i) {
           final item = data[i];
-          return Container(
+          return Card(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: AppTheme.cardDecoration,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (item.dusun != null)
-                  Text(item.dusun!, style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                if (item.kegiatan != null) ...[
-                  const SizedBox(height: 4),
-                  Text(item.kegiatan!, style: Theme.of(context).textTheme.titleMedium),
-                ],
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    if (item.volumeKegiatan != null) _detailChip('Vol', item.volumeKegiatan!),
-                    if (item.jumlahSasaran != null) ...[const SizedBox(width: 6), _detailChip('Sasaran', item.jumlahSasaran!)],
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.dusun != null)
+                    Text(item.dusun!, style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                  if (item.kegiatan != null) ...[
+                    const SizedBox(height: 4),
+                    Text(item.kegiatan!, style: Theme.of(context).textTheme.titleMedium),
                   ],
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (item.volumeKegiatan != null) _detailChip('Vol', item.volumeKegiatan!),
+                      if (item.jumlahSasaran != null) ...[const SizedBox(width: 6), _detailChip('Sasaran', item.jumlahSasaran!)],
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -238,6 +252,7 @@ class _CatatanTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<RekapitulasiProvider>();
+    final cs = Theme.of(context).colorScheme;
 
     if (prov.isLoading) return const LoadingWidget();
     if (prov.error != null) return ErrorDisplay(error: prov.error, onRetry: () => prov.loadCatatan());
@@ -251,48 +266,54 @@ class _CatatanTab extends StatelessWidget {
         itemCount: prov.catatanList.length,
         itemBuilder: (context, index) {
           final c = prov.catatanList[index];
-          return Container(
+          return Card(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: AppTheme.cardDecoration,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (c.statusKematian != null ? AppTheme.error : AppTheme.success).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        c.statusKematian != null ? 'KEMATIAN' : (c.statusIbu ?? 'IBU').toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: c.statusKematian != null ? AppTheme.error : AppTheme.success,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (c.statusKematian != null ? AppTheme.error : AppTheme.success).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          c.statusKematian != null ? 'KEMATIAN' : (c.statusIbu ?? 'IBU').toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: c.statusKematian != null ? AppTheme.error : AppTheme.success,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('Tahun ${c.configYear}', style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                      const SizedBox(width: 8),
+                      Text('Tahun ${c.configYear}', style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (c.namaIbu != null) ...[
+                    Text('Ibu: ${c.namaIbu}', style: Theme.of(context).textTheme.titleMedium),
                   ],
-                ),
-                const SizedBox(height: 8),
-                if (c.namaIbu != null) ...[
-                  Text('Ibu: ${c.namaIbu}', style: Theme.of(context).textTheme.titleMedium),
+                  if (c.namaBayi != null) ...[
+                    const SizedBox(height: 2),
+                    Text('Bayi: ${c.namaBayi}', style: const TextStyle(fontSize: 13)),
+                  ],
+                  if (c.namaMeninggal != null) ...[
+                    const SizedBox(height: 2),
+                    Text('Meninggal: ${c.namaMeninggal} (${c.sebabMeninggal ?? '-'})',
+                        style: const TextStyle(fontSize: 13, color: AppTheme.error)),
+                  ],
                 ],
-                if (c.namaBayi != null) ...[
-                  const SizedBox(height: 2),
-                  Text('Bayi: ${c.namaBayi}', style: const TextStyle(fontSize: 13)),
-                ],
-                if (c.namaMeninggal != null) ...[
-                  const SizedBox(height: 2),
-                  Text('Meninggal: ${c.namaMeninggal} (${c.sebabMeninggal ?? '-'})',
-                      style: const TextStyle(fontSize: 13, color: AppTheme.error)),
-                ],
-              ],
+              ),
             ),
           );
         },

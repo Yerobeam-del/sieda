@@ -1,3 +1,14 @@
+/// Helper: parse dynamic value ke int dengan aman.
+///
+/// MySQL/PHP sering return angka sebagai string ("0" bukan 0)
+/// di JSON. Dart strong-typed, jadi perlu konversi eksplisit.
+int _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
 class DashboardModel {
   final int configYear;
   final Ringkasan ringkasan;
@@ -15,7 +26,7 @@ class DashboardModel {
 
   factory DashboardModel.fromJson(Map<String, dynamic> json) {
     return DashboardModel(
-      configYear: json['config_year'] ?? 0,
+      configYear: _parseInt(json['config_year']),
       ringkasan: Ringkasan.fromJson(json['ringkasan'] ?? {}),
       perDusun: (json['per_dusun'] as List<dynamic>?)
               ?.map((e) => PerDusun.fromJson(e))
@@ -45,10 +56,10 @@ class Ringkasan {
 
   factory Ringkasan.fromJson(Map<String, dynamic> json) {
     return Ringkasan(
-      totalKeluarga: json['total_keluarga'] ?? 0,
-      totalPenduduk: json['total_penduduk'] ?? 0,
-      totalLakiLaki: json['total_laki_laki'] ?? 0,
-      totalPerempuan: json['total_perempuan'] ?? 0,
+      totalKeluarga: _parseInt(json['total_keluarga']),
+      totalPenduduk: _parseInt(json['total_penduduk']),
+      totalLakiLaki: _parseInt(json['total_laki_laki']),
+      totalPerempuan: _parseInt(json['total_perempuan']),
     );
   }
 
@@ -70,10 +81,10 @@ class PerDusun {
 
   factory PerDusun.fromJson(Map<String, dynamic> json) {
     return PerDusun(
-      id: json['id'] ?? 0,
+      id: _parseInt(json['id']),
       dusun: json['dusun'] ?? '',
-      totalKeluarga: json['total_keluarga'] ?? 0,
-      totalPenduduk: json['total_penduduk'] ?? 0,
+      totalKeluarga: _parseInt(json['total_keluarga']),
+      totalPenduduk: _parseInt(json['total_penduduk']),
     );
   }
 }
@@ -98,11 +109,11 @@ class Kesehatan {
   factory Kesehatan.fromJson(Map<String, dynamic> json) {
     return Kesehatan(
       dusun: json['dusun'] ?? '',
-      totalBalita: json['total_balita'] ?? 0,
-      ibuHamil: json['ibu_hamil'] ?? 0,
-      ibuMenyusui: json['ibu_menyusui'] ?? 0,
-      stunting: json['stunting'] ?? 0,
-      lansia: json['lansia'] ?? 0,
+      totalBalita: _parseInt(json['total_balita']),
+      ibuHamil: _parseInt(json['ibu_hamil']),
+      ibuMenyusui: _parseInt(json['ibu_menyusui']),
+      stunting: _parseInt(json['stunting']),
+      lansia: _parseInt(json['lansia']),
     );
   }
 }
@@ -139,10 +150,10 @@ class CatatanSummary {
 
   factory CatatanSummary.fromJson(Map<String, dynamic> json) {
     return CatatanSummary(
-      hamilBulanIni: json['hamil_bulan_ini'] ?? 0,
-      melahirkanBulanIni: json['melahirkan_bulan_ini'] ?? 0,
-      kematianBayiBalita: json['kematian_bayi_balita'] ?? 0,
-      totalCatatan: json['total_catatan'] ?? 0,
+      hamilBulanIni: _parseInt(json['hamil_bulan_ini']),
+      melahirkanBulanIni: _parseInt(json['melahirkan_bulan_ini']),
+      kematianBayiBalita: _parseInt(json['kematian_bayi_balita']),
+      totalCatatan: _parseInt(json['total_catatan']),
     );
   }
 }
@@ -166,12 +177,12 @@ class DetailKelompok {
 
   factory DetailKelompok.fromJson(Map<String, dynamic> json) {
     return DetailKelompok(
-      id: json['id'] ?? 0,
+      id: _parseInt(json['id']),
       kelompok: json['kelompok'] ?? '',
-      totalKeluarga: json['total_keluarga'] ?? 0,
-      totalPenduduk: json['total_penduduk'] ?? 0,
-      lakiLaki: json['laki_laki'] ?? 0,
-      perempuan: json['perempuan'] ?? 0,
+      totalKeluarga: _parseInt(json['total_keluarga']),
+      totalPenduduk: _parseInt(json['total_penduduk']),
+      lakiLaki: _parseInt(json['laki_laki']),
+      perempuan: _parseInt(json['perempuan']),
     );
   }
 }

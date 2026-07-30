@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/helpers.dart';
 import '../../models/catatan_model.dart';
@@ -106,7 +107,9 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
           const SizedBox(height: 8),
           _infoCard(context, [
             _infoRow('Status Ibu', c.statusIbuLabel),
-            if (c.tanggalHamil != null) _infoRow('Tanggal Hamil', c.tanggalHamil!),
+            // Hamil: tampilkan bulan, fallback ke tanggal_hamil (legacy)
+            if (c.bulanHamil != null) _infoRow('Bulan Hamil', DateFormat('MMMM', 'id').format(DateTime(2000, c.bulanHamil!))),
+            if (c.bulanHamil == null && c.tanggalHamil != null) _infoRow('Tanggal Hamil', c.tanggalHamil!),
             if (c.tanggalMelahirkan != null) _infoRow('Tanggal Melahirkan', c.tanggalMelahirkan!),
             if (c.tanggalNifasSelesai != null) _infoRow('Nifas Selesai', c.tanggalNifasSelesai!),
           ]),
@@ -147,13 +150,18 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
           if (c.keterangan != null && c.keterangan!.isNotEmpty) ...[
             _sectionTitle(context, Icons.notes_rounded, 'Keterangan', AppTheme.textHint),
             const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: AppTheme.cardDecoration,
-              child: Text(
-                c.keterangan!,
-                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, height: 1.5),
+Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  c.keterangan!,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, height: 1.5),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -262,9 +270,12 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
   }
 
   Widget _infoCard(BuildContext context, List<Widget> rows) {
-    return Container(
-      width: double.infinity,
-      decoration: AppTheme.cardDecoration,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

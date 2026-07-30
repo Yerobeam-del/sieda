@@ -234,9 +234,12 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
   }
 
   Widget _infoCard(BuildContext context, List<Widget> rows) {
-    return Container(
-      width: double.infinity,
-      decoration: AppTheme.cardDecoration,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -120,17 +120,23 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
           if (k.dasawismaKeluarga != null) ...[
             _sectionTitle('Data Kesehatan Keluarga'),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: AppTheme.cardDecoration,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _healthItem('Balita', '${k.dasawismaKeluarga.jumlahBalita ?? 0}', Colors.orange),
-                  _healthItem('Bumil', '${k.dasawismaKeluarga.jumlahIbuHamil ?? 0}', AppTheme.female),
-                  _healthItem('Stunting', '${k.dasawismaKeluarga.jumlahStunting ?? 0}', AppTheme.error),
-                  _healthItem('Lansia', '${k.dasawismaKeluarga.jumlahLansia ?? 0}', AppTheme.info),
-                ],
+Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _healthItem('Balita', '${k.dasawismaKeluarga.jumlahBalita ?? 0}', Colors.orange),
+                    _healthItem('Bumil', '${k.dasawismaKeluarga.jumlahIbuHamil ?? 0}', AppTheme.female),
+                    _healthItem('Stunting', '${k.dasawismaKeluarga.jumlahStunting ?? 0}', AppTheme.error),
+                    _healthItem('Lansia', '${k.dasawismaKeluarga.jumlahLansia ?? 0}', AppTheme.info),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -189,37 +195,43 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => PendudukDetailScreen(nik: a.nik)),
       ),
-      child: Container(
+      child: Card(
         margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.all(12),
-        decoration: AppTheme.cardDecoration,
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: genderColor.withOpacity(0.15),
-              child: Text(Helpers.getInitials(a.nama), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: genderColor)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(a.nama, style: Theme.of(context).textTheme.titleMedium),
-                  Row(
-                    children: [
-                      Text(a.genderLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                      if (a.usiaLabel != '-') ...[
-                        const Text(' | ', style: TextStyle(fontSize: 11, color: AppTheme.textHint)),
-                        Text(a.usiaLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                      ],
-                    ],
-                  ),
-                ],
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: genderColor.withOpacity(0.15),
+                child: Text(Helpers.getInitials(a.nama), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: genderColor)),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textHint),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(a.nama, style: Theme.of(context).textTheme.titleMedium),
+                    Row(
+                      children: [
+                        Text(a.genderLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                        if (a.usiaLabel != '-') ...[
+                          const Text(' | ', style: TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                          Text(a.usiaLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textHint),
+            ],
+          ),
         ),
       ),
     );

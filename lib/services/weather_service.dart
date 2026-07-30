@@ -268,4 +268,43 @@ class WeatherService {
 
     return WeatherData.empty();
   }
+
+  /// Fetch current weather using GPS coordinates (latitude, longitude).
+  /// Uses wttr.in @lat,lon format for location-based weather.
+  /// Falls back to location name if coordinates fail.
+  Future<WeatherData> getWeatherByCoordinates(double lat, double lon) async {
+    // Use @lat,lon format for wttr.in
+    final coordKey = '${lat.toStringAsFixed(2)}x${lon.toStringAsFixed(2)}';
+    final coordPath = '@$lat,$lon';
+
+    try {
+      final response = await _dio.get(
+        '/$coordPath',
+        queryParameters: {'format': 'j1', 'lang': 'id'},
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        final weather = WeatherData.fromWttrJson(response.data as Map<String, dynamic>);
+
+        if (weather.isValid) {
+          await _db.cacheWeather(weather.toJson(), coordKey);
+        }
+
+        return weather;
+      }
+    } catch (e) {
+      debugPrint('[Weather] Coord fetch error: $e');
+    }
+
+    // Try cache for this coordinate
+    final cached = await _db.getCachedWeather(coordKey);
+    if (cached != null && cached['json_data'] != null) {
+      try {
+        final jsonData = jsonDecode(cached['json_data'] as String) as Map<String, dynamic>;
+        return WeatherData.fromJson(jsonData);
+      } catch (_) {}
+    }
+
+    return WeatherData.empty();
+  }
 }

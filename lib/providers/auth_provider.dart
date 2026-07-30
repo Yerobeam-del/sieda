@@ -25,23 +25,40 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
+    _rememberedEmail = await LocalStorage.getRememberedEmail();
+    final token = await LocalStorage.getToken();
+
+    if (token == null || token.isEmpty) {
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return;
+    }
+
+    // Instagram-style: restore dari cache dulu, langsung authenticated
+    final userData = await LocalStorage.getUserData();
+    if (userData != null) {
+      _user = UserModel.fromJson(json.decode(userData));
+    }
+
+    // PASTIKAN status di-set SEBELUM background refresh,
+    // agar splash screen selalu melihat status yang definitif
+    _status = AuthStatus.authenticated;
+    notifyListeners();
+
+    // Background refresh: coba verifikasi token ke server
+    if (userData != null) {
+      // Refresh di background tanpa await
+      _refreshUserData(token);
+    } else {
+      // Tidak ada cache — tunggu hasil refresh
+      await _refreshUserData(token);
+    }
+  }
+
+  /// Refresh data user dari server di background.
+  /// Jika gagal (offline/server error), tetap pakai data cache.
+  Future<void> _refreshUserData(String token) async {
     try {
-      _rememberedEmail = await LocalStorage.getRememberedEmail();
-      final token = await LocalStorage.getToken();
-
-      if (token == null || token.isEmpty) {
-        _status = AuthStatus.unauthenticated;
-        notifyListeners();
-        return;
-      }
-
-      // Try to restore user from local storage first
-      final userData = await LocalStorage.getUserData();
-      if (userData != null) {
-        _user = UserModel.fromJson(json.decode(userData));
-      }
-
-      // Verify token is still valid
       final client = ApiClient(token: token);
       final response = await client.get(ApiEndpoints.me);
       final userJson = response['data'] as Map<String, dynamic>;
@@ -49,12 +66,8 @@ class AuthProvider extends ChangeNotifier {
       await LocalStorage.saveUserData(json.encode(userJson));
       _status = AuthStatus.authenticated;
     } catch (_) {
-      // Jika API /auth/me gagal (offline/server error), jangan langsung hapus token.
-      // Cukup set status authenticated jika user data masih ada di local storage.
-      if (_user != null) {
-        // Pertahankan sesi dari cache, user tetap bisa pakai app secara offline
-        _status = AuthStatus.authenticated;
-      } else {
+      // Gagal refresh — tetap pakai data cache yang sudah ada
+      if (_user == null) {
         await LocalStorage.deleteToken();
         await LocalStorage.deleteUserData();
         _status = AuthStatus.unauthenticated;

@@ -13,6 +13,7 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode): $message';
 
   String get friendlyMessage {
+    if (statusCode == 0) return message;
     if (statusCode == 401) return 'Email atau password salah.';
     if (statusCode == 403) return 'Anda tidak memiliki akses.';
     if (statusCode == 404) return 'Data tidak ditemukan.';

@@ -99,8 +99,39 @@ class ApiClient {
         e.type == DioExceptionType.receiveTimeout) {
       return ApiException(message: 'Koneksi timeout. Periksa jaringan Anda.');
     }
+
+    if (e.type == DioExceptionType.sendTimeout) {
+      return ApiException(message: 'Gagal mengirim data ke server. Periksa jaringan Anda.');
+    }
+
     if (e.type == DioExceptionType.connectionError) {
-      return ApiException(message: 'Tidak dapat terhubung ke server.');
+      final msg = e.message?.toLowerCase() ?? '';
+
+      // 'Connection refused' = port tertutup, server tidak berjalan sama sekali
+      if (msg.contains('refused')) {
+        return ApiException(
+          message: 'Tidak dapat terhubung ke server. Server SIEDA tidak berjalan.',
+          statusCode: 0,
+        );
+      }
+
+      // 'Connection reset / closed / lost' = koneksi diterima lalu diputus,
+      // artinya server hidup tapi PHP/MySQL crash.
+      if (msg.contains('reset') || msg.contains('closed') || msg.contains('lost')) {
+        return ApiException(
+          message: 'Server SIEDA tidak dapat memproses permintaan. '
+              'Kemungkinan MySQL atau PHP-FPM bermasalah. '
+              'Hubungi admin untuk mengecek server.',
+          statusCode: 0,
+        );
+      }
+
+      // Server benar-benar tidak bisa dijangkau (unknown reason)
+      return ApiException(
+        message: 'Tidak dapat terhubung ke server ${ApiEndpoints.baseUrl}. '
+            'Pastikan server SIEDA sedang berjalan.',
+        statusCode: 0,
+      );
     }
 
     final response = e.response;

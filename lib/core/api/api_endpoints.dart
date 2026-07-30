@@ -1,5 +1,9 @@
 class ApiEndpoints {
-  static const String baseUrl = 'http://103.197.190.85:8004/api/v1';
+  /// Base URL untuk API SIEDA.
+  ///
+  /// Seluruh API sudah tersedia di domain sieda.pkktoba.id via Apache.
+  /// Port 8004 (php artisan serve) hanya untuk development lokal.
+  static const String baseUrl = 'https://sieda.pkktoba.id/api/v1';
 
   // Auth
   static const String login = '/auth/login';

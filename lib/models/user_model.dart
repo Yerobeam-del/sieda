@@ -3,6 +3,7 @@ class UserModel {
   final String name;
   final String? username;
   final String? email;
+  final String? avatarUrl;
   final List<String> roles;
   final List<String> permissions;
   final String? desaName;
@@ -16,6 +17,7 @@ class UserModel {
     required this.name,
     this.username,
     this.email,
+    this.avatarUrl,
     this.roles = const [],
     this.permissions = const [],
     this.desaName,
@@ -31,6 +33,7 @@ class UserModel {
       name: json['name'] ?? '',
       username: json['username'],
       email: json['email'],
+      avatarUrl: json['avatar_url'],
       roles: json['roles'] != null ? List<String>.from(json['roles']) : [],
       permissions:
           json['permissions'] != null ? List<String>.from(json['permissions']) : [],
@@ -47,6 +50,7 @@ class UserModel {
         'name': name,
         'username': username,
         'email': email,
+        'avatar_url': avatarUrl,
         'roles': roles,
         'permissions': permissions,
         'desa_name': desaName,

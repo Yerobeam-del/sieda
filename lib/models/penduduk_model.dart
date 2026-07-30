@@ -1,22 +1,44 @@
 class PendudukModel {
+  // Identitas dasar
   final String nik;
   final String nama;
+  final String? noRegistrasi;
   final String? tempatLahir;
   final String? tanggalLahir;
   final String? jenisKelamin;
   final String? alamat;
   final String? noHp;
+
+  // Referensi (relasi — disimpan sebagai String nama untuk display)
   final String? agama;
   final String? pendidikan;
   final String? pekerjaan;
   final String? statusPerkawinan;
   final String? peranKeluarga;
   final String? statusKeluarga;
+
+  // Status PKK
+  final String? statusAkseptor;
+  final String? jenisAkseptor;
+  final String? statusPosyandu;
+  final String? frekuensiPosyandu;
+  final String? satuanFrekuensiVolume;
+  final String? statusPbkb;
+  final String? statusTabungan;
+  final String? statusKelompokBelajar;
+  final String? jenisKelompokBelajar;
+  final String? statusPaud;
+  final String? statusKegiatanKoperasi;
+  final String? jenisKoperasi;
+  final String? statusKebutuhanKhusus;
+  final String? kebutuhanKhusus;
+
   final bool active;
 
   PendudukModel({
     required this.nik,
     required this.nama,
+    this.noRegistrasi,
     this.tempatLahir,
     this.tanggalLahir,
     this.jenisKelamin,
@@ -28,31 +50,67 @@ class PendudukModel {
     this.statusPerkawinan,
     this.peranKeluarga,
     this.statusKeluarga,
+    this.statusAkseptor,
+    this.jenisAkseptor,
+    this.statusPosyandu,
+    this.frekuensiPosyandu,
+    this.satuanFrekuensiVolume,
+    this.statusPbkb,
+    this.statusTabungan,
+    this.statusKelompokBelajar,
+    this.jenisKelompokBelajar,
+    this.statusPaud,
+    this.statusKegiatanKoperasi,
+    this.jenisKoperasi,
+    this.statusKebutuhanKhusus,
+    this.kebutuhanKhusus,
     this.active = true,
   });
 
   factory PendudukModel.fromJson(Map<String, dynamic> json) {
+    String? extractName(dynamic val) {
+      if (val is Map) {
+        return val['nama']?.toString();
+      }
+      return val?.toString();
+    }
+
+    bool parseActive(dynamic val) => val == 1 || val == true || val == '1';
+
     return PendudukModel(
       nik: json['nik'] ?? '',
       nama: json['nama'] ?? '',
-      tempatLahir: json['tempat_lahir'],
-      tanggalLahir: json['tanggal_lahir'],
-      jenisKelamin: json['jenis_kelamin'],
-      alamat: json['alamat'],
-      noHp: json['no_hp'],
-      agama: json['agama'] is Map ? json['agama']?['nama'] : json['agama']?.toString(),
-      pendidikan: json['pendidikan'] is Map
-          ? json['pendidikan']?['nama']
-          : json['pendidikan']?.toString(),
-      pekerjaan: json['pekerjaan'] is Map
-          ? json['pekerjaan']?['nama']
-          : json['pekerjaan']?.toString(),
-      statusPerkawinan: json['status_perkawinan'],
-      peranKeluarga: json['peran_keluarga'],
-      statusKeluarga: json['status_keluarga'],
-      active: json['active'] ?? true,
+      noRegistrasi: json['no_registrasi']?.toString(),
+      tempatLahir: json['tempat_lahir']?.toString(),
+      tanggalLahir: json['tanggal_lahir']?.toString(),
+      jenisKelamin: json['jenis_kelamin']?.toString(),
+      alamat: json['alamat']?.toString(),
+      noHp: json['no_hp']?.toString(),
+      agama: extractName(json['agama']),
+      pendidikan: extractName(json['pendidikan']),
+      pekerjaan: extractName(json['pekerjaan']),
+      statusPerkawinan: extractName(json['status_perkawinan']),
+      peranKeluarga: extractName(json['peran_keluarga']),
+      statusKeluarga: extractName(json['status_keluarga']),
+      statusAkseptor: json['status_akseptor']?.toString(),
+      jenisAkseptor: extractName(json['jenis_akseptor']),
+      statusPosyandu: json['status_posyandu']?.toString(),
+      frekuensiPosyandu: json['frekuensi_posyandu']?.toString(),
+      satuanFrekuensiVolume: json['satuan_frekuensi_volume']?.toString(),
+      statusPbkb: json['status_pbkb']?.toString(),
+      statusTabungan: json['status_tabungan']?.toString(),
+      statusKelompokBelajar: json['status_kelompok_belajar']?.toString(),
+      jenisKelompokBelajar: extractName(json['jenis_kelompok_belajar']),
+      statusPaud: json['status_paud']?.toString(),
+      statusKegiatanKoperasi: json['status_kegiatan_koperasi']?.toString(),
+      jenisKoperasi: extractName(json['jenis_koperasi']),
+      statusKebutuhanKhusus: json['status_kebutuhan_khusus']?.toString(),
+      kebutuhanKhusus: extractName(json['kebutuhan_khusus']),
+      active: parseActive(json['active']),
     );
   }
+
+  // ============ Computed properties ============
 
   String get genderLabel {
     if (jenisKelamin == null) return '-';
@@ -77,4 +135,18 @@ class PendudukModel {
       return '-';
     }
   }
+
+  String get formattedTtl {
+    final ttl = tempatLahir ?? '';
+    final tgl = tanggalLahir ?? '-';
+    return ttl.isNotEmpty ? '$ttl, $tgl' : tgl;
+  }
+
+  String get formattedStatusKeluarga {
+    final peran = peranKeluarga ?? '-';
+    final status = statusKeluarga ?? '-';
+    return '$peran / $status';
+  }
+
+
 }

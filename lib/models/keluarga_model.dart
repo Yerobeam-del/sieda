@@ -24,27 +24,52 @@ class KeluargaModel {
   });
 
   factory KeluargaModel.fromJson(Map<String, dynamic> json) {
+    bool parseActive(dynamic val) {
+      return val == 1 || val == true || val == '1';
+    }
+
+    PendudukModel? parseKepalaKeluarga(dynamic val) {
+      if (val is Map<String, dynamic>) {
+        return PendudukModel.fromJson(val);
+      }
+      return null;
+    }
+
+    KelompokDasawismaMini? parseKelompok(dynamic val) {
+      if (val is Map<String, dynamic>) {
+        return KelompokDasawismaMini.fromJson(val);
+      }
+      return null;
+    }
+
+    DasawismaKeluargaData? parseDasawisma(dynamic val) {
+      if (val is Map<String, dynamic>) {
+        return DasawismaKeluargaData.fromJson(val);
+      }
+      return null;
+    }
+
     return KeluargaModel(
       noKk: json['no_kk'] ?? '',
-      idKepalaKeluarga: json['id_kepala_keluarga'],
-      idKelompokDasawisma: json['id_kelompok_dasawisma'],
+      idKepalaKeluarga: json['id_kepala_keluarga']?.toString(),
+      idKelompokDasawisma: json['id_kelompok_dasawisma']?.toString(),
       configYear: json['config_year'] ?? 0,
-      active: json['active'] ?? true,
-      kepalaKeluarga: json['kepala_keluarga'] != null
-          ? PendudukModel.fromJson(json['kepala_keluarga'])
-          : null,
-      kelompokDasawisma: json['kelompok_dasawisma'] != null
-          ? KelompokDasawismaMini.fromJson(json['kelompok_dasawisma'])
-          : null,
-      dasawismaKeluarga: json['dasawisma_keluarga'] != null
-          ? DasawismaKeluargaData.fromJson(json['dasawisma_keluarga'])
-          : null,
-      anggota: json['anggota'] != null
-          ? (json['anggota'] as List<dynamic>)
-              .map((e) => PendudukModel.fromJson(e))
-              .toList()
-          : [],
+      active: parseActive(json['active']),
+      kepalaKeluarga: parseKepalaKeluarga(json['kepala_keluarga']),
+      kelompokDasawisma: parseKelompok(json['kelompok_dasawisma']),
+      dasawismaKeluarga: parseDasawisma(json['dasawisma_keluarga']),
+      anggota: _parseAnggota(json['anggota']),
     );
+  }
+
+  static List<PendudukModel> _parseAnggota(dynamic data) {
+    if (data is List) {
+      return data.map((e) {
+        if (e is Map<String, dynamic>) return PendudukModel.fromJson(e);
+        return PendudukModel.fromJson(e as Map<String, dynamic>);
+      }).toList();
+    }
+    return [];
   }
 }
 
@@ -60,12 +85,17 @@ class KelompokDasawismaMini {
   });
 
   factory KelompokDasawismaMini.fromJson(Map<String, dynamic> json) {
+    String? getDusun(dynamic val) {
+      if (val is Map) {
+        return val['nama']?.toString();
+      }
+      return val?.toString();
+    }
+
     return KelompokDasawismaMini(
       id: json['id'] ?? 0,
       nama: json['nama'] ?? '',
-      dusun: json['dusun'] is Map
-          ? json['dusun']?['nama']
-          : json['dusun']?.toString(),
+      dusun: getDusun(json['dusun']),
     );
   }
 }

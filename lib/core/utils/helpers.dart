@@ -25,14 +25,14 @@ class Helpers {
 
   static String formatNumeric(dynamic value) {
     if (value == null) return '0';
-    final num = (value is num) ? value : double.tryParse(value.toString()) ?? 0;
-    return num.toStringAsFixed(0);
+    final numericValue = (value is num) ? value : (double.tryParse(value.toString()) ?? 0);
+    return numericValue.toStringAsFixed(0);
   }
 
   static String formatRupiah(dynamic value) {
     if (value == null) return 'Rp 0';
-    final num = (value is num) ? value : double.tryParse(value.toString()) ?? 0;
-    final formatted = num.toStringAsFixed(0);
+    final numericValue = (value is num) ? value : (double.tryParse(value.toString()) ?? 0);
+    final formatted = numericValue.toStringAsFixed(0);
     final regex = RegExp(r'(\d)(?=(\d{3})+(?!\d))');
     return 'Rp ${formatted.replaceAllMapped(regex, (match) => '${match.group(1)}.')}';
   }

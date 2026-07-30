@@ -3,12 +3,14 @@ class DashboardModel {
   final Ringkasan ringkasan;
   final List<PerDusun> perDusun;
   final List<Kesehatan> kesehatan;
+  final CatatanSummary catatanSummary;
 
   DashboardModel({
     required this.configYear,
     required this.ringkasan,
     this.perDusun = const [],
     this.kesehatan = const [],
+    this.catatanSummary = const CatatanSummary(),
   });
 
   factory DashboardModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class DashboardModel {
               ?.map((e) => Kesehatan.fromJson(e))
               .toList() ??
           [],
+      catatanSummary: CatatanSummary.fromJson(json['catatan_summary'] as Map<String, dynamic>? ?? {}),
     );
   }
 }
@@ -117,6 +120,29 @@ class DetailDusun {
               ?.map((e) => DetailKelompok.fromJson(e))
               .toList() ??
           [],
+    );
+  }
+}
+
+class CatatanSummary {
+  final int hamilBulanIni;
+  final int melahirkanBulanIni;
+  final int kematianBayiBalita;
+  final int totalCatatan;
+
+  const CatatanSummary({
+    this.hamilBulanIni = 0,
+    this.melahirkanBulanIni = 0,
+    this.kematianBayiBalita = 0,
+    this.totalCatatan = 0,
+  });
+
+  factory CatatanSummary.fromJson(Map<String, dynamic> json) {
+    return CatatanSummary(
+      hamilBulanIni: json['hamil_bulan_ini'] ?? 0,
+      melahirkanBulanIni: json['melahirkan_bulan_ini'] ?? 0,
+      kematianBayiBalita: json['kematian_bayi_balita'] ?? 0,
+      totalCatatan: json['total_catatan'] ?? 0,
     );
   }
 }

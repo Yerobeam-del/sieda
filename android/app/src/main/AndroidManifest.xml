@@ -1,5 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Akses internet untuk API SIEDA (wajib di build release —
+         manifest debug/profile hanya berlaku saat development) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- GPS / Location permissions untuk survey lapangan -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -7,7 +11,9 @@
     <application
         android:label="sieda"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

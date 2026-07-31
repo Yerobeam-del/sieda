@@ -9,8 +9,10 @@ import '../../../database/local_database.dart';
 import '../../../services/connectivity_service.dart';
 import '../../../services/activity_service.dart';
 import '../../../models/keluarga_model.dart';
+import '../../../models/penduduk_model.dart';
 import '../../../models/reference_model.dart';
 import '../../../providers/reference_provider.dart';
+import '../../../widgets/penduduk_picker_sheet.dart';
 
 class KeluargaFormScreen extends StatefulWidget {
   final KeluargaModel? keluarga;
@@ -31,6 +33,9 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
   List<KelompokDasawismaItem> _kelompokList = [];
   bool _isLoadingKelompok = false;
 
+  /// Penduduk yang dipilih sebagai Kepala Keluarga (dari picker).
+  PendudukModel? _kepalaKeluarga;
+
   bool _isLoading = false;
   bool _isSavingOffline = false;
 
@@ -42,6 +47,7 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
     final k = widget.keluarga;
     _noKkController = TextEditingController(text: k?.noKk ?? widget.initialNoKk ?? '');
     _kepalaKeluargaController = TextEditingController(text: k?.kepalaKeluarga?.nik ?? '');
+    _kepalaKeluarga = k?.kepalaKeluarga;
 
     if (k?.idKelompokDasawisma != null) {
       _idKelompokDasawisma = int.tryParse(k!.idKelompokDasawisma!);
@@ -58,6 +64,18 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
       setState(() {
         _kelompokList = list;
         _isLoadingKelompok = false;
+      });
+    }
+  }
+
+  /// Buka picker penduduk untuk memilih Kepala Keluarga — user tidak perlu
+  /// menghafal/menebak NIK, cukup pilih dari list (online & offline).
+  Future<void> _pickKepalaKeluarga() async {
+    final selected = await showPendudukPicker(context);
+    if (selected != null) {
+      setState(() {
+        _kepalaKeluarga = selected;
+        _kepalaKeluargaController.text = selected.nik;
       });
     }
   }
@@ -138,7 +156,9 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
 
     if (save == true) {
       setState(() => _isSavingOffline = true);
-      await LocalDatabase().savePendingKeluarga(data);
+      // Mode edit disimpan sebagai UPDATE (PUT ke detail) saat sinkron,
+      // bukan CREATE — mencegah duplikat No. KK di server.
+      await LocalDatabase().savePendingKeluarga(data, action: _isEditing ? 'UPDATE' : 'CREATE');
       ActivityService().logSave(
         tipe: 'Keluarga',
         nama: data['no_kk'] ?? '',
@@ -175,7 +195,7 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.warning.withOpacity(0.2),
+                color: AppTheme.warning.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
@@ -200,7 +220,7 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.info.withOpacity(0.08),
+                  color: AppTheme.info.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -209,7 +229,7 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Pastikan NIK Kepala Keluarga sudah terdaftar di data Penduduk.',
+                        'Ketuk kolom NIK Kepala Keluarga untuk memilih dari data Penduduk yang sudah terdaftar.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.info),
                       ),
                     ),
@@ -237,16 +257,22 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // NIK Kepala Keluarga
+              // NIK Kepala Keluarga — ketuk untuk memilih dari data Penduduk
               TextFormField(
                 controller: _kepalaKeluargaController,
-                decoration: const InputDecoration(
+                readOnly: true,
+                onTap: _pickKepalaKeluarga,
+                decoration: InputDecoration(
                   labelText: 'NIK Kepala Keluarga *',
-                  hintText: 'NIK yang sudah terdaftar',
-                  prefixIcon: Icon(Icons.person_outline),
+                  hintText: 'Ketuk untuk memilih dari data Penduduk',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  suffixIcon: const Icon(Icons.expand_more_rounded),
+                  helperText: _kepalaKeluarga != null
+                      ? 'Kepala Keluarga: ${_kepalaKeluarga!.nama}'
+                      : null,
+                  helperMaxLines: 2,
                 ),
-                keyboardType: TextInputType.number,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'NIK Kepala Keluarga wajib diisi' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Pilih Kepala Keluarga dari daftar Penduduk' : null,
               ),
               const SizedBox(height: 16),
 
@@ -260,15 +286,15 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
                 )
               else
                 DropdownButtonFormField<int>(
-                  value: _idKelompokDasawisma,
+                  initialValue: _idKelompokDasawisma,
                   decoration: const InputDecoration(
                     labelText: 'Kelompok Dasawisma *',
                     prefixIcon: Icon(Icons.groups_outlined),
                   ),
                   items: [
-                    const DropdownMenuItem<int>(
+                    DropdownMenuItem<int>(
                       value: null,
-                      child: Text('- Pilih Kelompok -', style: TextStyle(color: AppTheme.textHint)),
+                      child: Text('- Pilih Kelompok -', style: TextStyle(color: AppTheme.textHintOf(context))),
                     ),
                     ..._kelompokList.map((item) => DropdownMenuItem<int>(
                           value: item.id,

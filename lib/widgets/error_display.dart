@@ -29,7 +29,7 @@ class ErrorDisplay extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(0.1),
+                  color: AppTheme.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -96,16 +96,16 @@ class EmptyState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.textHint.withOpacity(0.1),
+                  color: AppTheme.textHintOf(context).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 52, color: AppTheme.textHint),
+                child: Icon(icon, size: 52, color: AppTheme.textHintOf(context)),
               ),
               const SizedBox(height: 24),
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.textPrimaryOf(context),
                     ),
                 textAlign: TextAlign.center,
               ),

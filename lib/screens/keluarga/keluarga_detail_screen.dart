@@ -6,7 +6,10 @@ import '../../providers/keluarga_provider.dart';
 import '../../models/penduduk_model.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
+import '../../widgets/animations/page_transitions.dart';
+import '../../widgets/pending_sync_badge.dart';
 import '../penduduk/penduduk_detail_screen.dart';
+import 'anggota_keluarga_screen.dart';
 
 class KeluargaDetailScreen extends StatefulWidget {
   final String noKk;
@@ -34,6 +37,11 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
       appBar: AppBar(
         title: const Text('Detail Keluarga'),
         actions: [
+          if (prov.selectedKeluarga?.isPendingSync == true)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Center(child: PendingSyncBadge()),
+            ),
           if (prov.selectedKeluarga != null)
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
@@ -75,7 +83,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.family_restroom_rounded, color: Colors.white, size: 28),
@@ -93,7 +101,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -131,10 +139,10 @@ Card(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _healthItem('Balita', '${k.dasawismaKeluarga.jumlahBalita ?? 0}', Colors.orange),
-                    _healthItem('Bumil', '${k.dasawismaKeluarga.jumlahIbuHamil ?? 0}', AppTheme.female),
-                    _healthItem('Stunting', '${k.dasawismaKeluarga.jumlahStunting ?? 0}', AppTheme.error),
-                    _healthItem('Lansia', '${k.dasawismaKeluarga.jumlahLansia ?? 0}', AppTheme.info),
+                    _healthItem(context, 'Balita', '${k.dasawismaKeluarga.jumlahBalita ?? 0}', Colors.orange),
+                    _healthItem(context, 'Bumil', '${k.dasawismaKeluarga.jumlahIbuHamil ?? 0}', AppTheme.female),
+                    _healthItem(context, 'Stunting', '${k.dasawismaKeluarga.jumlahStunting ?? 0}', AppTheme.error),
+                    _healthItem(context, 'Lansia', '${k.dasawismaKeluarga.jumlahLansia ?? 0}', AppTheme.info),
                   ],
                 ),
               ),
@@ -146,6 +154,96 @@ Card(
           _sectionTitle('Anggota Keluarga (${k.anggota.length})'),
           const SizedBox(height: 8),
           ...k.anggota.map((PendudukModel a) => _anggotaCard(context, a)),
+          const SizedBox(height: 8),
+          // Kelola anggota: tambah/hapus dengan dukungan offline.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                // Tangkap provider sebelum async gap agar tidak ada
+                // BuildContext dipakai di callback .then() (lint-safe).
+                final prov = context.read<KeluargaProvider>();
+                // Selalu muat ulang setelah kembali — screen anggota tidak
+                // pernah pop dengan nilai, jadi abaikan hasilnya.
+                Navigator.of(context).push(
+                  SlideTransitionRoute(page: AnggotaKeluargaScreen(noKk: widget.noKk)),
+                ).then((_) {
+                  prov.loadDetail(widget.noKk);
+                });
+              },
+              icon: const Icon(Icons.group_add_outlined, size: 18),
+              label: const Text('Kelola Anggota Keluarga'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Hapus keluarga: online -> DELETE langsung; offline -> antrean.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _confirmDelete(context, k),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: const Text('Hapus Keluarga'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.error,
+                side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Konfirmasi hapus keluarga. Online -> DELETE langsung; offline -> data
+  /// diantrekan dan akan dihapus saat koneksi tersedia kembali.
+  void _confirmDelete(BuildContext context, dynamic k) {
+    final noKk = k.noKk as String;
+    final namaKepala = k.kepalaKeluarga?.nama as String? ?? 'Keluarga';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Keluarga'),
+        content: Text('Apakah Anda yakin ingin menghapus keluarga $namaKepala (No. KK $noKk)? Semua anggota dan catatan terkait juga akan terpengaruh.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await context.read<KeluargaProvider>().deleteKeluarga(k);
+              if (!context.mounted) return;
+
+              if (!result.handled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Gagal menghapus keluarga.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result.queuedOffline
+                      ? 'Keluarga akan dihapus saat online.'
+                      : 'Keluarga berhasil dihapus.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              if (context.mounted) Navigator.of(context).pop(true);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );
@@ -156,7 +254,7 @@ Card(
       padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          Text('$label: ', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+          Text('$label: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
           Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
@@ -173,16 +271,16 @@ Card(
     );
   }
 
-  Widget _healthItem(String label, String value, Color color) {
+  Widget _healthItem(BuildContext context, String label, String value, Color color) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16)),
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: AppTheme.textSecondaryOf(context))),
       ],
     );
   }
@@ -208,7 +306,7 @@ Card(
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: genderColor.withOpacity(0.15),
+                backgroundColor: genderColor.withValues(alpha: 0.15),
                 child: Text(Helpers.getInitials(a.nama), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: genderColor)),
               ),
               const SizedBox(width: 10),
@@ -219,17 +317,17 @@ Card(
                     Text(a.nama, style: Theme.of(context).textTheme.titleMedium),
                     Row(
                       children: [
-                        Text(a.genderLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                        Text(a.genderLabel, style: TextStyle(fontSize: 11, color: AppTheme.textSecondaryOf(context))),
                         if (a.usiaLabel != '-') ...[
-                          const Text(' | ', style: TextStyle(fontSize: 11, color: AppTheme.textHint)),
-                          Text(a.usiaLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                          Text(' | ', style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context))),
+                          Text(a.usiaLabel, style: TextStyle(fontSize: 11, color: AppTheme.textSecondaryOf(context))),
                         ],
                       ],
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textHint),
+              Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textHintOf(context)),
             ],
           ),
         ),

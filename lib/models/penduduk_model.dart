@@ -35,6 +35,10 @@ class PendudukModel {
 
   final bool active;
 
+  /// true bila record ini berasal dari antrian offline (belum tersinkron
+  /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
+  final bool isPendingSync;
+
   PendudukModel({
     required this.nik,
     required this.nama,
@@ -65,9 +69,10 @@ class PendudukModel {
     this.statusKebutuhanKhusus,
     this.kebutuhanKhusus,
     this.active = true,
+    this.isPendingSync = false,
   });
 
-  factory PendudukModel.fromJson(Map<String, dynamic> json) {
+  factory PendudukModel.fromJson(Map<String, dynamic> json, {bool isPendingSync = false}) {
     String? extractName(dynamic val) {
       if (val is Map) {
         return val['nama']?.toString();
@@ -107,10 +112,46 @@ class PendudukModel {
       statusKebutuhanKhusus: json['status_kebutuhan_khusus']?.toString(),
       kebutuhanKhusus: extractName(json['kebutuhan_khusus']),
       active: parseActive(json['active']),
+      isPendingSync: isPendingSync,
     );
   }
 
   // ============ Computed properties ============
+
+  /// Salinan model dengan nilai field tertentu diganti. Saat ini dipakai
+  /// untuk menandai item sebagai pending sinkron (isPendingSync).
+  PendudukModel copyWith({bool? isPendingSync}) => PendudukModel(
+        nik: nik,
+        nama: nama,
+        noRegistrasi: noRegistrasi,
+        tempatLahir: tempatLahir,
+        tanggalLahir: tanggalLahir,
+        jenisKelamin: jenisKelamin,
+        alamat: alamat,
+        noHp: noHp,
+        agama: agama,
+        pendidikan: pendidikan,
+        pekerjaan: pekerjaan,
+        statusPerkawinan: statusPerkawinan,
+        peranKeluarga: peranKeluarga,
+        statusKeluarga: statusKeluarga,
+        statusAkseptor: statusAkseptor,
+        jenisAkseptor: jenisAkseptor,
+        statusPosyandu: statusPosyandu,
+        frekuensiPosyandu: frekuensiPosyandu,
+        satuanFrekuensiVolume: satuanFrekuensiVolume,
+        statusPbkb: statusPbkb,
+        statusTabungan: statusTabungan,
+        statusKelompokBelajar: statusKelompokBelajar,
+        jenisKelompokBelajar: jenisKelompokBelajar,
+        statusPaud: statusPaud,
+        statusKegiatanKoperasi: statusKegiatanKoperasi,
+        jenisKoperasi: jenisKoperasi,
+        statusKebutuhanKhusus: statusKebutuhanKhusus,
+        kebutuhanKhusus: kebutuhanKhusus,
+        active: active,
+        isPendingSync: isPendingSync ?? this.isPendingSync,
+      );
 
   String get genderLabel {
     if (jenisKelamin == null) return '-';

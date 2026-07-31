@@ -72,7 +72,7 @@ class _RekapitulasiScreenState extends State<RekapitulasiScreen>
           isScrollable: true,
           indicatorColor: AppTheme.primary,
           labelColor: AppTheme.primary,
-          unselectedLabelColor: AppTheme.textHint,
+          unselectedLabelColor: AppTheme.textHintOf(context),
           tabs: const [
             Tab(text: 'Data Umum'),
             Tab(text: 'Pokja 1'),
@@ -136,9 +136,9 @@ class _DataUmumTab extends StatelessWidget {
                     ],
                   ),
                   const Divider(height: 16),
-                  _dataRow('Jumlah Keluarga', d.jumlahKeluarga ?? '0'),
-                  _dataRow('Jumlah Penduduk', d.jumlahPenduduk ?? '0'),
-                  _dataRow('Jumlah Kader', d.jumlahKader ?? '0'),
+                  _dataRow(context, 'Jumlah Keluarga', d.jumlahKeluarga ?? '0'),
+                  _dataRow(context, 'Jumlah Penduduk', d.jumlahPenduduk ?? '0'),
+                  _dataRow(context, 'Jumlah Kader', d.jumlahKader ?? '0'),
                 ],
               ),
             ),
@@ -148,13 +148,13 @@ class _DataUmumTab extends StatelessWidget {
     );
   }
 
-  Widget _dataRow(String label, String value) {
+  Widget _dataRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
           Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         ],
       ),
@@ -242,7 +242,7 @@ class _PokjaTab extends StatelessWidget {
   Widget _detailChip(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
       child: Text('$label: $value', style: const TextStyle(fontSize: 11, color: AppTheme.primary)),
     );
   }
@@ -283,7 +283,7 @@ class _CatatanTab extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: (c.statusKematian != null ? AppTheme.error : AppTheme.success).withOpacity(0.1),
+                          color: (c.statusKematian != null ? AppTheme.error : AppTheme.success).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -296,7 +296,7 @@ class _CatatanTab extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text('Tahun ${c.configYear}', style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                      Text('Tahun ${c.configYear}', style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context))),
                     ],
                   ),
                   const SizedBox(height: 8),

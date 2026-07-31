@@ -81,6 +81,11 @@ class _DasawismaKelompokFormScreenState extends State<DasawismaKelompokFormScree
     } on ApiException catch (e) {
       if (!mounted) return;
       _showSnackbar(e.friendlyMessage);
+      // statusCode 0 = error koneksi (timeout/refused) — tawarkan simpan
+      // offline seperti form lainnya. 422 (validasi) tetap ditolak.
+      if (e.statusCode == 0) {
+        _offerOfflineSave(data);
+      }
     } catch (e) {
       if (!mounted) return;
       _showSnackbar('Gagal terhubung ke server.');
@@ -102,7 +107,11 @@ class _DasawismaKelompokFormScreenState extends State<DasawismaKelompokFormScree
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              LocalDatabase().savePendingDasawisma(data, 'kelompok');
+              // Sertakan id kelompok agar saat sinkron mode edit memakai PUT
+              // ke detail (bukan CREATE) — mencegah duplikat kelompok.
+              if (_isEditing) data['id'] = widget.kelompok!.id;
+              LocalDatabase().savePendingDasawisma(data, 'kelompok',
+                  action: _isEditing ? 'UPDATE' : 'CREATE');
               if (!mounted) return;
               _showSnackbar('Data disimpan offline.');
               Navigator.of(context).pop(true);
@@ -138,7 +147,7 @@ class _DasawismaKelompokFormScreenState extends State<DasawismaKelompokFormScree
             Container(
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: AppTheme.warning.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -169,13 +178,13 @@ class _DasawismaKelompokFormScreenState extends State<DasawismaKelompokFormScree
               const SizedBox(height: 16),
 
               DropdownButtonFormField<int>(
-                value: _idDusun,
+                initialValue: _idDusun,
                 decoration: const InputDecoration(
                   labelText: 'Dusun *',
                   prefixIcon: Icon(Icons.location_on_outlined),
                 ),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('- Pilih Dusun -', style: TextStyle(color: AppTheme.textHint))),
+                  DropdownMenuItem(value: null, child: Text('- Pilih Dusun -', style: TextStyle(color: AppTheme.textHintOf(context)))),
                   ...?refs?.dusun.map((d) => DropdownMenuItem(value: d.id, child: Text(d.nama))),
                 ],
                 onChanged: (v) => setState(() => _idDusun = v),

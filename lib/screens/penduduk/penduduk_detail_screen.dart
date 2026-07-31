@@ -6,6 +6,7 @@ import '../../models/penduduk_model.dart';
 import '../../providers/penduduk_provider.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
+import '../../widgets/pending_sync_badge.dart';
 
 class PendudukDetailScreen extends StatefulWidget {
   final String nik;
@@ -30,7 +31,16 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
     final prov = context.watch<PendudukProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Penduduk')),
+      appBar: AppBar(
+        title: const Text('Detail Penduduk'),
+        actions: [
+          if (prov.selectedPenduduk?.isPendingSync == true)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Center(child: PendingSyncBadge()),
+            ),
+        ],
+      ),
       body: prov.isLoading
           ? const LoadingWidget()
           : prov.error != null
@@ -59,17 +69,17 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           _sectionTitle(context, Icons.person_rounded, 'Data Diri'),
           const SizedBox(height: 8),
           _infoCard(context, [
-            _infoRow('No. Registrasi', p.noRegistrasi ?? '-'),
-            _infoRow('NIK', p.nik),
-            _infoRow('Nama Lengkap', p.nama),
-            _infoRow('Tempat, Tgl Lahir', p.formattedTtl),
-            _infoRow('Usia', p.usiaLabel),
-            _infoRow('Jenis Kelamin', p.genderLabel),
-            _infoRow('Agama', p.agama ?? '-'),
-            _infoRow('Pendidikan', p.pendidikan ?? '-'),
-            _infoRow('Pekerjaan', p.pekerjaan ?? '-'),
-            _infoRow('No. HP', Helpers.formatPhone(p.noHp)),
-            _infoRow('Alamat', p.alamat ?? '-'),
+            _infoRow(context, 'No. Registrasi', p.noRegistrasi ?? '-'),
+            _infoRow(context, 'NIK', p.nik),
+            _infoRow(context, 'Nama Lengkap', p.nama),
+            _infoRow(context, 'Tempat, Tgl Lahir', p.formattedTtl),
+            _infoRow(context, 'Usia', p.usiaLabel),
+            _infoRow(context, 'Jenis Kelamin', p.genderLabel),
+            _infoRow(context, 'Agama', p.agama ?? '-'),
+            _infoRow(context, 'Pendidikan', p.pendidikan ?? '-'),
+            _infoRow(context, 'Pekerjaan', p.pekerjaan ?? '-'),
+            _infoRow(context, 'No. HP', Helpers.formatPhone(p.noHp)),
+            _infoRow(context, 'Alamat', p.alamat ?? '-'),
           ]),
           const SizedBox(height: 16),
 
@@ -77,9 +87,9 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           _sectionTitle(context, Icons.family_restroom_rounded, 'Status Keluarga'),
           const SizedBox(height: 8),
           _infoCard(context, [
-            _infoRow('Status Perkawinan', p.statusPerkawinan ?? '-'),
-            _infoRow('Peran dalam Keluarga', p.peranKeluarga ?? '-'),
-            _infoRow('Status dalam Keluarga', p.statusKeluarga ?? '-'),
+            _infoRow(context, 'Status Perkawinan', p.statusPerkawinan ?? '-'),
+            _infoRow(context, 'Peran dalam Keluarga', p.peranKeluarga ?? '-'),
+            _infoRow(context, 'Status dalam Keluarga', p.statusKeluarga ?? '-'),
           ]),
           const SizedBox(height: 16),
 
@@ -87,17 +97,79 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           _sectionTitle(context, Icons.health_and_safety_rounded, 'Program PKK'),
           const SizedBox(height: 8),
           _infoCard(context, [
-            _infoYesNo('Akseptor KB', p.statusAkseptor, p.jenisAkseptor),
-            _infoYesNo('Posyandu', p.statusPosyandu, 
+            _infoYesNo(context, 'Akseptor KB', p.statusAkseptor, p.jenisAkseptor),
+            _infoYesNo(context, 'Posyandu', p.statusPosyandu, 
                 p.frekuensiPosyandu != null ? '${p.frekuensiPosyandu}/${p.satuanFrekuensiVolume ?? "-"}' : null),
-            _infoYesNo('BKB (Bina Keluarga Balita)', p.statusPbkb, null),
-            _infoYesNo('Memiliki Tabungan', p.statusTabungan, null),
-            _infoYesNo('Kelompok Belajar', p.statusKelompokBelajar, p.jenisKelompokBelajar),
-            _infoYesNo('PAUD/Sejenis', p.statusPaud, null),
-            _infoYesNo('Kegiatan Koperasi', p.statusKegiatanKoperasi, p.jenisKoperasi),
-            _infoYesNo('Kebutuhan Khusus', p.statusKebutuhanKhusus, p.kebutuhanKhusus),
+            _infoYesNo(context, 'BKB (Bina Keluarga Balita)', p.statusPbkb, null),
+            _infoYesNo(context, 'Memiliki Tabungan', p.statusTabungan, null),
+            _infoYesNo(context, 'Kelompok Belajar', p.statusKelompokBelajar, p.jenisKelompokBelajar),
+            _infoYesNo(context, 'PAUD/Sejenis', p.statusPaud, null),
+            _infoYesNo(context, 'Kegiatan Koperasi', p.statusKegiatanKoperasi, p.jenisKoperasi),
+            _infoYesNo(context, 'Kebutuhan Khusus', p.statusKebutuhanKhusus, p.kebutuhanKhusus),
           ]),
+          const SizedBox(height: 24),
+
+          // ============ HAPUS ============
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _confirmDelete(context, p),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: const Text('Hapus Penduduk'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.error,
+                side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  /// Konfirmasi hapus penduduk. Online -> DELETE langsung; offline -> data
+  /// diantrekan dan akan dihapus saat koneksi tersedia kembali.
+  void _confirmDelete(BuildContext context, PendudukModel p) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Penduduk'),
+        content: Text('Apakah Anda yakin ingin menghapus ${p.nama} (NIK ${p.nik})? Tindakan ini tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await context.read<PendudukProvider>().deletePenduduk(p);
+              if (!context.mounted) return;
+
+              if (!result.handled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Gagal menghapus penduduk.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result.queuedOffline
+                      ? 'Penduduk akan dihapus saat online.'
+                      : 'Penduduk berhasil dihapus.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              if (context.mounted) Navigator.of(context).pop(true);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );
@@ -109,14 +181,14 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [genderColor, genderColor.withOpacity(0.7)],
+          colors: [genderColor, genderColor.withValues(alpha: 0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: genderColor.withOpacity(0.3),
+            color: genderColor.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -177,7 +249,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -190,7 +262,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -222,7 +294,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
+            color: AppTheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: AppTheme.primary),
@@ -256,7 +328,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -266,8 +338,8 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
             width: 130,
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
+              style: TextStyle(
+                color: AppTheme.textSecondaryOf(context),
                 fontSize: 12,
               ),
             ),
@@ -275,8 +347,8 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: AppTheme.textPrimaryOf(context),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -287,7 +359,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
     );
   }
 
-  Widget _infoYesNo(String label, String? status, String? detail) {
+  Widget _infoYesNo(BuildContext context, String label, String? status, String? detail) {
     final isActive = status?.toUpperCase().trim() == 'Y' ||
         status?.toUpperCase().trim() == 'YA';
     final yesNoText = isActive ? 'Ya' : (status == null ? '-' : 'Tidak');
@@ -301,7 +373,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
             width: 130,
             child: Text(
               label,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 12),
             ),
           ),
           Expanded(
@@ -311,8 +383,8 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
                     color: isActive
-                        ? AppTheme.success.withOpacity(0.1)
-                        : AppTheme.textHint.withOpacity(0.1),
+                        ? AppTheme.success.withValues(alpha: 0.1)
+                        : AppTheme.textHintOf(context).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -320,7 +392,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isActive ? AppTheme.success : AppTheme.textHint,
+                      color: isActive ? AppTheme.success : AppTheme.textHintOf(context),
                     ),
                   ),
                 ),
@@ -328,9 +400,9 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
                   const SizedBox(width: 4),
                   Text(
                     '/ $detail',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.textPrimaryOf(context),
                       fontWeight: FontWeight.w500,
                     ),
                   ),

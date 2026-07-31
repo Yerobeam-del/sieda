@@ -3,13 +3,11 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../services/weather_service.dart';
-import '../../services/location_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/error_display.dart';
+import '../../widgets/top_fade_overlay.dart';
 import '../../widgets/charts/dashboard_charts.dart';
-import '../../widgets/weather_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,53 +17,12 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final _weatherService = WeatherService();
-  WeatherData? _weather;
-  bool _weatherLoading = false;
-  String? _weatherError;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().loadDashboard();
-      _loadWeather();
     });
-  }
-
-  Future<void> _loadWeather() async {
-    setState(() {
-      _weatherLoading = true;
-      _weatherError = null;
-    });
-
-    final user = context.read<AuthProvider>().user;
-    final desa = user?.desaName ?? user?.kecamatanName ?? '';
-
-    WeatherData? weather;
-    final locationService = LocationService();
-    final position = await locationService.getCurrentPosition();
-
-    if (position != null) {
-      weather = await _weatherService.getWeatherByCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-    }
-
-    if ((weather == null || !weather.isValid) && desa.isNotEmpty) {
-      weather = await _weatherService.getWeather(desa);
-    }
-
-    if (mounted) {
-      setState(() {
-        _weather = weather;
-        _weatherLoading = false;
-        if (weather == null || (!weather.isValid && weather.description == 'Tidak tersedia')) {
-          _weatherError = 'Gagal memuat cuaca';
-        }
-      });
-    }
   }
 
   @override
@@ -73,17 +30,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dashboardProv = context.watch<DashboardProvider>();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
-      body: RefreshIndicator(
-        color: cs.primary,
-        onRefresh: () => dashboardProv.loadDashboard(),
-        child: CustomScrollView(
+      // Fade di tepi atas layar: muncul setelah header gradient selesai
+      // scroll menghilang (expandedHeight = topInset + 160).
+      body: TopFadeOverlay(
+        fadeInAfter: topInset + 160,
+        child: RefreshIndicator(
+          color: cs.primary,
+          onRefresh: () => dashboardProv.loadDashboard(),
+          child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             // ── Header Premium ──
             SliverAppBar(
-              expandedHeight: 200,
+              // Inset-aware: status bar + top pad + content + bottom pad.
+              expandedHeight: topInset + 160,
               pinned: false,
               automaticallyImplyLeading: false,
               flexibleSpace: FlexibleSpaceBar(
@@ -92,18 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     // Gradient background
                     Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF0F766E),
-                            const Color(0xFF0D9488),
-                            const Color(0xFF14B8A6),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          stops: const [0.0, 0.45, 1.0],
-                        ),
-                      ),
+                      decoration: AppTheme.gradientHeaderOf(context),
                     ),
                     // Decorative curves overlay
                     Positioned(
@@ -132,7 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     // Content
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 52, 24, 20),
+                      padding: EdgeInsets.fromLTRB(24, topInset + 24, 24, 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -223,14 +175,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 16),
 
                     _buildCatatanSection(context, dashboardProv),
-                    const SizedBox(height: 16),
-
-                    WeatherCard(
-                      weather: _weather,
-                      isLoading: _weatherLoading,
-                      errorMessage: _weatherError,
-                      onRefresh: _loadWeather,
-                    ),
                     const SizedBox(height: 16),
 
                     _buildChartCard(
@@ -326,6 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

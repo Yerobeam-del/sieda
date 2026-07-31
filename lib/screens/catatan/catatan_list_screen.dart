@@ -6,8 +6,8 @@ import '../../models/catatan_model.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
+import '../../widgets/pending_sync_badge.dart';
 import 'catatan_detail_screen.dart';
-import 'catatan_form_screen.dart';
 
 class CatatanListScreen extends StatefulWidget {
   const CatatanListScreen({super.key});
@@ -30,41 +30,39 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
     final prov = context.watch<CatatanProvider>();
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            SlideTransitionRoute(page: const CatatanFormScreen()),
-          );
-          if (result == true) prov.loadCatatan(refresh: true);
-        },
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text('Tambah'),
-      ),
       body: CustomScrollView(
         slivers: [
           // Header
           SliverAppBar(
-            expandedHeight: 110,
+            // Inset-aware: status bar + top pad + title block + bottom pad.
+            expandedHeight: MediaQuery.paddingOf(context).top + 96,
             pinned: true,
             automaticallyImplyLeading: false,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: AppTheme.gradientHeader,
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+                decoration: AppTheme.gradientHeaderOf(context),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 24,
+                  20,
+                  0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
                       'Ibu & Anak',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Catatan Kelahiran & Kematian',
-                      style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -141,13 +139,13 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: isActive
-                        ? (key == 'death' ? AppTheme.error : AppTheme.primary).withOpacity(0.1)
-                        : Colors.white,
+                        ? (key == 'death' ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1)
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isActive
                           ? (key == 'death' ? AppTheme.error : AppTheme.primary)
-                          : AppTheme.border,
+                          : AppTheme.borderOf(context),
                       width: isActive ? 1.5 : 1,
                     ),
                   ),
@@ -159,7 +157,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                         size: 16,
                         color: isActive
                             ? (key == 'death' ? AppTheme.error : AppTheme.primary)
-                            : AppTheme.textHint,
+                            : AppTheme.textHintOf(context),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -169,7 +167,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                           fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                           color: isActive
                               ? (key == 'death' ? AppTheme.error : AppTheme.primary)
-                              : AppTheme.textSecondary,
+                              : AppTheme.textSecondaryOf(context),
                         ),
                       ),
                     ],
@@ -208,7 +206,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
       statusIcon = Icons.healing_rounded;
       statusLabel = 'Masa Nifas';
     } else {
-      statusColor = AppTheme.textHint;
+      statusColor = AppTheme.textHintOf(context);
       statusIcon = Icons.help_outline_rounded;
       statusLabel = c.statusIbu ?? '-';
     }
@@ -221,14 +219,14 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDeath ? AppTheme.error.withOpacity(0.3) : statusColor.withOpacity(0.2),
+            color: isDeath ? AppTheme.error.withValues(alpha: 0.3) : statusColor.withValues(alpha: 0.2),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -244,7 +242,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(statusIcon, size: 18, color: statusColor),
@@ -255,23 +253,35 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        statusLabel,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              statusLabel,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: statusColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (c.isPendingSync) ...[
+                            const SizedBox(width: 8),
+                            const PendingSyncBadge(),
+                          ],
+                        ],
                       ),
                       Text(
                         'Tahun ${c.configYear}',
-                        style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
+                        style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context)),
                       ),
                     ],
                   ),
                 ),
                 // Arrow
-                const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
+                Icon(Icons.chevron_right_rounded, color: AppTheme.textHintOf(context), size: 20),
               ],
             ),
 
@@ -281,9 +291,9 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
             if (c.namaIbu != null) ...[
               Row(
                 children: [
-                  const Icon(Icons.person_rounded, size: 14, color: AppTheme.textHint),
+                  Icon(Icons.person_rounded, size: 14, color: AppTheme.textHintOf(context)),
                   const SizedBox(width: 6),
-                  Text('Ibu: ', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('Ibu: ', style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context))),
                   Expanded(
                     child: Text(
                       c.namaIbu!,
@@ -299,9 +309,9 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.person_rounded, size: 14, color: AppTheme.textHint),
+                  Icon(Icons.person_rounded, size: 14, color: AppTheme.textHintOf(context)),
                   const SizedBox(width: 6),
-                  Text('Suami: ', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('Suami: ', style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context))),
                   Expanded(
                     child: Text(
                       c.namaSuami!,
@@ -319,7 +329,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.08),
+                  color: AppTheme.success.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -335,7 +345,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                       const SizedBox(width: 4),
                       Text(
                         '(${c.tanggalLahirBayi})',
-                        style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
+                        style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context)),
                       ),
                     ],
                   ],
@@ -349,7 +359,7 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(0.08),
+                  color: AppTheme.error.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -371,11 +381,11 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(Icons.groups_outlined, size: 12, color: AppTheme.textHint),
+                  Icon(Icons.groups_outlined, size: 12, color: AppTheme.textHintOf(context)),
                   const SizedBox(width: 4),
                   Text(
                     c.kelompokDisplay,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
+                    style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context)),
                   ),
                 ],
               ),

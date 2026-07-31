@@ -8,21 +8,25 @@ import '../database/local_database.dart';
 import '../models/catatan_model.dart';
 
 class CatatanProvider extends ChangeNotifier {
-  List<CatatanKelahiranKematianModel> _catatanList = [];
+  // Data dibagi dua: data server (API/cache) + data pending offline.
+  // Getter catatanList menggabungkan keduanya — data yang diinput offline
+  // tampil paling atas dengan badge "Menunggu sinkron".
+  List<CatatanKelahiranKematianModel> _serverList = [];
+  List<CatatanKelahiranKematianModel> _pendingList = [];
   CatatanKelahiranKematianModel? _selectedCatatan;
   bool _isLoading = false;
   ApiException? _error;
   String _filterStatus = 'all'; // all, hamil, melahirkan, nifas, meninggal
 
-  List<CatatanKelahiranKematianModel> get catatanList => _catatanList;
+  List<CatatanKelahiranKematianModel> get catatanList => [..._pendingList, ..._serverList];
   CatatanKelahiranKematianModel? get selectedCatatan => _selectedCatatan;
   bool get isLoading => _isLoading;
   ApiException? get error => _error;
   String get filterStatus => _filterStatus;
 
   List<CatatanKelahiranKematianModel> get filteredList {
-    if (_filterStatus == 'all') return _catatanList;
-    return _catatanList.where((c) {
+    if (_filterStatus == 'all') return catatanList;
+    return catatanList.where((c) {
       if (_filterStatus == 'death') return c.isDeath;
       return c.statusIbu?.toLowerCase() == _filterStatus;
     }).toList();
@@ -31,12 +35,15 @@ class CatatanProvider extends ChangeNotifier {
   /// Load all catatan from API, fallback to cache
   Future<void> loadCatatan({bool refresh = false}) async {
     if (refresh) {
-      _catatanList = [];
+      _serverList = [];
     }
 
     _isLoading = true;
     _error = null;
     notifyListeners();
+
+    // Muat antrian offline agar data yang disimpan offline tetap tampil.
+    await _loadPending();
 
     try {
       final token = await LocalStorage.getToken();
@@ -51,7 +58,7 @@ class CatatanProvider extends ChangeNotifier {
       final response = await client.get(ApiEndpoints.catatanKelahiranKematian);
       final data = response['data'] as List<dynamic>;
 
-      _catatanList = data
+      _serverList = data
           .map((e) => CatatanKelahiranKematianModel.fromJson(e as Map<String, dynamic>))
           .toList();
 
@@ -74,18 +81,67 @@ class CatatanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Muat ulang antrian offline (baris pending yang belum tersinkron).
+  Future<void> _loadPending() async {
+    try {
+      final rows = await LocalDatabase().getUnsyncedCatatan();
+      _pendingList = rows
+          .where((r) => r['action'] != 'DELETE')
+          .map((r) => CatatanKelahiranKematianModel.fromJson(
+                jsonDecode(r['json_data'] as String) as Map<String, dynamic>,
+                isPendingSync: true,
+              ))
+          .toList();
+    } catch (_) {}
+  }
+
   Future<void> _loadFromCache() async {
     try {
       final cached = await LocalDatabase().getCachedCatatan();
       if (cached != null && cached.isNotEmpty) {
-        _catatanList = cached
+        _serverList = cached
             .map((e) => CatatanKelahiranKematianModel.fromJson(
                   jsonDecode(e['json_data'] as String) as Map<String, dynamic>,
                 ))
             .toList();
-        debugPrint('[Catatan] Loaded ${_catatanList.length} from cache');
+        debugPrint('[Catatan] Loaded ${_serverList.length} from cache');
       }
     } catch (_) {}
+  }
+
+  /// Cari catatan di antrian offline (untuk dibuka saat offline).
+  /// CREATE baru offline tidak punya id server → id 0 memetakan ke baris
+  /// tanpa id.
+  Future<CatatanKelahiranKematianModel?> _pendingById(int id) async {
+    try {
+      final rows = await LocalDatabase().getUnsyncedCatatan();
+      for (final r in rows) {
+        if (r['action'] == 'DELETE') continue;
+        final json = jsonDecode(r['json_data'] as String) as Map<String, dynamic>;
+        final rowId = json['id']?.toString();
+        if (id == 0
+            ? (rowId == null || rowId.isEmpty)
+            : rowId == id.toString()) {
+          return CatatanKelahiranKematianModel.fromJson(json, isPendingSync: true);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Cari catatan di cache (data terakhir yang pernah diunduh).
+  Future<CatatanKelahiranKematianModel?> _cachedById(int id) async {
+    try {
+      final cached = await LocalDatabase().getCachedCatatan();
+      if (cached == null) return null;
+      for (final e in cached) {
+        final json = jsonDecode(e['json_data'] as String) as Map<String, dynamic>;
+        if (json['id']?.toString() == id.toString()) {
+          return CatatanKelahiranKematianModel.fromJson(json);
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Load detail single catatan
@@ -96,6 +152,16 @@ class CatatanProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1) Data yang masih menunggu sinkron (disimpan offline).
+      final pending = await _pendingById(id);
+      if (pending != null) {
+        _selectedCatatan = pending;
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // 2) Server.
       final token = await LocalStorage.getToken();
       if (token == null) {
         _error = ApiException(message: 'Silakan login terlebih dahulu.');
@@ -111,9 +177,12 @@ class CatatanProvider extends ChangeNotifier {
       );
     } on ApiException catch (e) {
       _error = e;
+      // 3) Cache offline.
+      _selectedCatatan = await _cachedById(id);
     } catch (e) {
       debugPrint('[Catatan] Error loading detail: $e');
       _error = ApiException(message: 'Gagal memuat detail catatan.');
+      _selectedCatatan = await _cachedById(id);
     }
 
     _isLoading = false;
@@ -143,7 +212,10 @@ class CatatanProvider extends ChangeNotifier {
       _isLoading = false;
       // Offer offline save
       try {
-        await LocalDatabase().savePendingCatatan(data);
+        await LocalDatabase().savePendingCatatan(
+          data,
+          action: id != null ? 'UPDATE' : 'CREATE',
+        );
         debugPrint('[Catatan] Saved offline: ${data['id_warga_ibu']}');
       } catch (_) {}
       notifyListeners();
@@ -158,7 +230,8 @@ class CatatanProvider extends ChangeNotifier {
       final client = ApiClient(token: token!);
       await client.delete(ApiEndpoints.catatanDetail(id));
 
-      _catatanList.removeWhere((c) => c.id == id);
+      _serverList.removeWhere((c) => c.id == id);
+      _pendingList.removeWhere((c) => c.id == id);
       notifyListeners();
       return true;
     } on ApiException catch (e) {

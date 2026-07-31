@@ -6,6 +6,7 @@ import '../../models/dasawisma_model.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
+import '../../widgets/pending_sync_badge.dart';
 import 'dasawisma_form_screen.dart';
 import 'dasawisma_keluarga_form_screen.dart';
 
@@ -32,7 +33,16 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
     final prov = context.watch<DasawismaProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Kelompok')),
+      appBar: AppBar(
+        title: const Text('Detail Kelompok'),
+        actions: [
+          if (prov.selectedKelompok?.isPendingSync == true)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Center(child: PendingSyncBadge()),
+            ),
+        ],
+      ),
       body: prov.isLoading
           ? const LoadingWidget()
           : prov.error != null
@@ -62,19 +72,19 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
                   child: const Icon(Icons.groups_rounded, size: 36, color: Colors.white),
                 ),
                 const SizedBox(height: 12),
                 Text(k.nama, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 4),
                 if (k.dusun != null)
-                  Text('Dusun ${k.dusun}', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 14)),
+                  Text('Dusun ${k.dusun}', style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14)),
                 if (k.namaKader != null) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
                     child: Text('Kader: ${k.namaKader}', style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                 ],
@@ -97,9 +107,16 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(SlideTransitionRoute(
-                    page: DasawismaKelompokFormScreen(kelompok: k),
-                  )).then((_) => context.read<DasawismaProvider>().loadKelompokDetail(widget.kelompokId)),
+                  onPressed: () {
+                    final provider = context.read<DasawismaProvider>();
+                    Navigator.of(context).push(SlideTransitionRoute(
+                      page: DasawismaKelompokFormScreen(kelompok: k),
+                    )).then((_) {
+                      if (mounted) {
+                        provider.loadKelompokDetail(widget.kelompokId);
+                      }
+                    });
+                  },
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: const Text('Edit'),
                   style: OutlinedButton.styleFrom(
@@ -141,12 +158,12 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
                 children: [
                   Text('Informasi Kelompok', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
-                  _infoRow('Nama', k.nama),
-                  _infoRow('Dusun', k.dusun ?? '-'),
-                  _infoRow('Kader', k.namaKader ?? '-'),
-                  _infoRow('Tahun', k.configYear.toString()),
-                  _infoRow('Total KK', '${k.totalKeluarga ?? 0}'),
-                  _infoRow('Total Anggota', '${k.totalAnggota ?? 0}'),
+                  _infoRow(context, 'Nama', k.nama),
+                  _infoRow(context, 'Dusun', k.dusun ?? '-'),
+                  _infoRow(context, 'Kader', k.namaKader ?? '-'),
+                  _infoRow(context, 'Tahun', k.configYear.toString()),
+                  _infoRow(context, 'Total KK', '${k.totalKeluarga ?? 0}'),
+                  _infoRow(context, 'Total Anggota', '${k.totalAnggota ?? 0}'),
                 ],
               ),
             ),
@@ -160,22 +177,22 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
   Widget _statBadge(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.85))),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.85))),
         ],
       ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          SizedBox(width: 100, child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
+          SizedBox(width: 100, child: Text(label, style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)))),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
         ],
       ),

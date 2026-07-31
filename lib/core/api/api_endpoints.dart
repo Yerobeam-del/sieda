@@ -32,6 +32,7 @@ class ApiEndpoints {
   static const String dasawismaKelompok = '/dasawisma/kelompok';
   static String dasawismaKelompokDetail(int id) => '/dasawisma/kelompok/$id';
   static const String dasawismaKeluarga = '/dasawisma/keluarga';
+  static String dasawismaKeluargaDetail(String noKk) => '/dasawisma/keluarga/$noKk';
   static const String dasawismaRingkasan = '/dasawisma/ringkasan-per-dusun';
   static const String dasawismaRecapKesehatan = '/dasawisma/recap-kesehatan';
 

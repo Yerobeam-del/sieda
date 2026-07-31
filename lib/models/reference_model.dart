@@ -26,6 +26,9 @@ class ReferenceData {
   final List<ReferenceItem> jenisKoperasi;
   final List<ReferenceItem> kebutuhanKhusus;
   final List<ReferenceItem> kelompokDasawisma;
+  final List<ReferenceItem> jenisMakananPokok;
+  final List<ReferenceItem> sumberAir;
+  final List<ReferenceItem> jenisUsahaUp2k;
 
   ReferenceData({
     this.dusun = const [],
@@ -41,6 +44,9 @@ class ReferenceData {
     this.jenisKoperasi = const [],
     this.kebutuhanKhusus = const [],
     this.kelompokDasawisma = const [],
+    this.jenisMakananPokok = const [],
+    this.sumberAir = const [],
+    this.jenisUsahaUp2k = const [],
   });
 
   factory ReferenceData.fromJson(Map<String, dynamic> json) {
@@ -64,6 +70,9 @@ class ReferenceData {
       jenisKoperasi: parseList('jenis_koperasi'),
       kebutuhanKhusus: parseList('kebutuhan_khusus'),
       kelompokDasawisma: parseList('kelompok_dasawisma'),
+      jenisMakananPokok: parseList('jenis_makanan_pokok'),
+      sumberAir: parseList('sumber_air'),
+      jenisUsahaUp2k: parseList('jenis_usaha_up2k'),
     );
   }
 }

@@ -63,16 +63,19 @@ class ActivityService {
   Future<void> logSync({
     required int success,
     required int failed,
+    int deferred = 0,
   }) async {
+    final parts = <String>['$success berhasil'];
+    if (failed > 0) parts.add('$failed gagal');
+    if (deferred > 0) parts.add('$deferred ditunda');
+
     await log(
       tipe: 'Sistem',
       aksi: 'Sync',
       deskripsi: success > 0
           ? '$success data berhasil disinkronkan'
           : 'Sinkronisasi selesai',
-      detail: failed > 0
-          ? '$success berhasil, $failed gagal'
-          : '$success berhasil',
+      detail: parts.join(', '),
     );
   }
 

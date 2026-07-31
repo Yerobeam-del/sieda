@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'dart:convert';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
@@ -14,49 +15,69 @@ class AuthProvider extends ChangeNotifier {
   ApiException? _error;
   String? _rememberedEmail;
 
+  /// Completer yang resolve saat _initialize() selesai.
+  /// Splash screen meng-await ini untuk menghindari race condition
+  /// (status masih uninitialized saat pengecekan rute).
+  final Completer<void> _readyCompleter = Completer<void>();
+  Future<void> get ready => _readyCompleter.future;
+
   AuthStatus get status => _status;
   UserModel? get user => _user;
   ApiException? get error => _error;
   String? get rememberedEmail => _rememberedEmail;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get isUninitialized => _status == AuthStatus.uninitialized;
 
   AuthProvider() {
     _initialize();
   }
 
   Future<void> _initialize() async {
-    _rememberedEmail = await LocalStorage.getRememberedEmail();
-    final token = await LocalStorage.getToken();
+    try {
+      _rememberedEmail = await LocalStorage.getRememberedEmail();
+      final token = await LocalStorage.getToken();
 
-    if (token == null || token.isEmpty) {
+      if (token == null || token.isEmpty) {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return;
+      }
+
+      // Instagram-style: restore dari cache dulu, langsung authenticated
+      final userData = await LocalStorage.getUserData();
+      if (userData != null) {
+        _user = UserModel.fromJson(json.decode(userData));
+      }
+
+      // PASTIKAN status di-set SEBELUM background refresh,
+      // agar splash screen selalu melihat status yang definitif
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+
+      // Background refresh: coba verifikasi token ke server
+      if (userData != null) {
+        // Refresh di background tanpa await
+        _refreshUserData(token);
+      } else {
+        // Tidak ada cache — tunggu hasil refresh
+        await _refreshUserData(token);
+      }
+    } catch (_) {
+      // Defensive: jika restore gagal total, anggap belum login.
       _status = AuthStatus.unauthenticated;
       notifyListeners();
-      return;
-    }
-
-    // Instagram-style: restore dari cache dulu, langsung authenticated
-    final userData = await LocalStorage.getUserData();
-    if (userData != null) {
-      _user = UserModel.fromJson(json.decode(userData));
-    }
-
-    // PASTIKAN status di-set SEBELUM background refresh,
-    // agar splash screen selalu melihat status yang definitif
-    _status = AuthStatus.authenticated;
-    notifyListeners();
-
-    // Background refresh: coba verifikasi token ke server
-    if (userData != null) {
-      // Refresh di background tanpa await
-      _refreshUserData(token);
-    } else {
-      // Tidak ada cache — tunggu hasil refresh
-      await _refreshUserData(token);
+    } finally {
+      // Selalu lepaskan splash screen, walau terjadi error.
+      if (!_readyCompleter.isCompleted) {
+        _readyCompleter.complete();
+      }
     }
   }
 
   /// Refresh data user dari server di background.
-  /// Jika gagal (offline/server error), tetap pakai data cache.
+  /// - Jika sukses: update data user & cache.
+  /// - Jika 401 (token benar-benar kadaluarsa/dicabut): paksa logout.
+  /// - Jika error jaringan (offline/server 5xx): tetap pakai data cache.
   Future<void> _refreshUserData(String token) async {
     try {
       final client = ApiClient(token: token);
@@ -65,15 +86,27 @@ class AuthProvider extends ChangeNotifier {
       _user = UserModel.fromJson(userJson);
       await LocalStorage.saveUserData(json.encode(userJson));
       _status = AuthStatus.authenticated;
+    } on ApiException catch (e) {
+      // 401 = token tidak valid lagi -> paksa logout.
+      if (e.statusCode == 401) {
+        await _forceLogout();
+      }
+      // Error lain (0 = koneksi gagal, 5xx) -> biarkan pakai cache.
     } catch (_) {
-      // Gagal refresh — tetap pakai data cache yang sudah ada
+      // Error tak terduga -> tetap pakai cache jika ada user.
       if (_user == null) {
-        await LocalStorage.deleteToken();
-        await LocalStorage.deleteUserData();
-        _status = AuthStatus.unauthenticated;
+        await _forceLogout();
       }
     }
     notifyListeners();
+  }
+
+  /// Hapus token & data user, paksa status menjadi unauthenticated.
+  Future<void> _forceLogout() async {
+    await LocalStorage.deleteToken();
+    await LocalStorage.deleteUserData();
+    _user = null;
+    _status = AuthStatus.unauthenticated;
   }
 
   Future<bool> login(String email, String password, {bool remember = false}) async {

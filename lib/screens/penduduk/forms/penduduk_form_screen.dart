@@ -227,7 +227,9 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
 
     if (save == true) {
       setState(() => _isSavingOffline = true);
-      await LocalDatabase().savePendingPenduduk(data);
+      // Mode edit disimpan sebagai UPDATE (PUT ke detail) saat sinkron,
+      // bukan CREATE — mencegah duplikat NIK di server.
+      await LocalDatabase().savePendingPenduduk(data, action: _isEditing ? 'UPDATE' : 'CREATE');
       ActivityService().logSave(
         tipe: 'Penduduk',
         nama: data['nama'] ?? '',
@@ -267,7 +269,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.warning.withOpacity(0.2),
+                color: AppTheme.warning.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
@@ -334,7 +336,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
               const SizedBox(height: 16),
 
               // Jenis Kelamin
-              Text('Jenis Kelamin *', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('Jenis Kelamin *', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -469,7 +471,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
               const SizedBox(height: 8),
               Text(
                 'Status program PKK warga. Pilih "Ya" untuk mengisi detail lanjutan.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHint),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHintOf(context)),
               ),
               const SizedBox(height: 12),
 
@@ -597,13 +599,13 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
               ),
               if (_isSavingOffline) ...[
                 const SizedBox(height: 8),
-                const Center(
+                Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                      SizedBox(width: 8),
-                      Text('Menyimpan offline...', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: 8),
+                      Text('Menyimpan offline...', style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context))),
                     ],
                   ),
                 ),
@@ -634,21 +636,21 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.1) : Colors.white,
+          color: selected ? color.withValues(alpha: 0.1) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? color : AppTheme.border,
+            color: selected ? color : AppTheme.borderOf(context),
             width: selected ? 2 : 1,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: selected ? color : AppTheme.textHint, size: 20),
+            Icon(icon, color: selected ? color : AppTheme.textHintOf(context), size: 20),
             const SizedBox(width: 8),
             Text(label, style: TextStyle(
               fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-              color: selected ? color : AppTheme.textPrimary,
+              color: selected ? color : AppTheme.textPrimaryOf(context),
             )),
           ],
         ),
@@ -665,7 +667,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
     required IconData icon,
   }) {
     return DropdownButtonFormField<int>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
@@ -674,7 +676,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
       items: [
         DropdownMenuItem<int>(
           value: null,
-          child: Text('- Pilih $label -', style: const TextStyle(color: AppTheme.textHint)),
+          child: Text('- Pilih $label -', style: TextStyle(color: AppTheme.textHintOf(context))),
         ),
         ...items.map((item) => DropdownMenuItem<int>(
               value: item.id,
@@ -689,18 +691,18 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: AppTheme.borderOf(context)),
       ),
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
+            child: Text(label, style: TextStyle(fontSize: 13, color: AppTheme.textPrimaryOf(context))),
           ),
           _toggleChip('Ya', currentValue == 'Ya', AppTheme.success, () => onChanged('Ya')),
           const SizedBox(width: 8),
-          _toggleChip('Tidak', currentValue == 'Tidak', AppTheme.textHint, () => onChanged('Tidak')),
+          _toggleChip('Tidak', currentValue == 'Tidak', AppTheme.textHintOf(context), () => onChanged('Tidak')),
         ],
       ),
     );
@@ -713,7 +715,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+          color: selected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected ? color : Colors.transparent,
@@ -725,7 +727,7 @@ class _PendudukFormScreenState extends State<PendudukFormScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            color: selected ? color : AppTheme.textHint,
+            color: selected ? color : AppTheme.textHintOf(context),
           ),
         ),
       ),

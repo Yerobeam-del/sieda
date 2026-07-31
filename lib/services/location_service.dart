@@ -33,7 +33,7 @@ class LocationService {
     }
   }
 
-  /// Get current position. Returns null if failed.
+  /// Get current position. Returns null if failed or timed out.
   Future<Position?> getCurrentPosition() async {
     try {
       final hasPermission = await requestPermission();
@@ -43,6 +43,8 @@ class LocationService {
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
           distanceFilter: 0,
+          // Don't hang forever if GPS can't get a fix.
+          timeLimit: Duration(seconds: 10),
         ),
       );
       return position;

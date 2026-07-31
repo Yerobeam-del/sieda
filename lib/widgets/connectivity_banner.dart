@@ -20,19 +20,28 @@ class ConnectivityBanner extends StatelessWidget {
           child: !isOnline
               ? Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  // Banner memanjang ke belakang status bar (edge-to-edge),
+                  // tapi teksnya tetap di bawah inset status bar device.
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    MediaQuery.paddingOf(context).top + 8,
+                    20,
+                    8,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppTheme.warning.withOpacity(0.12),
-                        AppTheme.warning.withOpacity(0.06),
+                        AppTheme.warning.withValues(alpha: 0.12),
+                        AppTheme.warning.withValues(alpha: 0.06),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    border: const Border(
+                    border: Border(
                       bottom: BorderSide(
-                        color: Color(0xFFFEF3C7),
+                        color: AppTheme.isDark(context)
+                            ? const Color(0xFFFEF3C7).withValues(alpha: 0.3)
+                            : const Color(0xFFFEF3C7),
                         width: 1,
                       ),
                     ),
@@ -48,19 +57,19 @@ class ConnectivityBanner extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.warning.withOpacity(0.4),
+                              color: AppTheme.warning.withValues(alpha: 0.4),
                               blurRadius: 4,
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'Offline — data disimpan & dikirim saat online',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.textSecondaryOf(context),
                         ),
                       ),
                     ],
@@ -68,7 +77,16 @@ class ConnectivityBanner extends StatelessWidget {
                 )
               : const SizedBox.shrink(),
         ),
-        Expanded(child: child),
+        // Saat banner tampil, inset status bar sudah "dipakai" banner,
+        // jadi padding atas dihapus dari MediaQuery layar di bawahnya
+        // agar header tab (topInset) tidak jadi dobel spasi.
+        Expanded(
+          child: MediaQuery.removePadding(
+            context: context,
+            removeTop: !isOnline,
+            child: child,
+          ),
+        ),
       ],
     );
   }
@@ -84,7 +102,7 @@ class OnlineStatusIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: (isOnline ? AppTheme.success : AppTheme.warning).withOpacity(0.12),
+        color: (isOnline ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -98,7 +116,7 @@ class OnlineStatusIndicator extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (isOnline ? AppTheme.success : AppTheme.warning).withOpacity(0.4),
+                  color: (isOnline ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.4),
                   blurRadius: 4,
                 ),
               ],

@@ -8,6 +8,7 @@ import '../../providers/theme_provider.dart';
 import '../../services/connectivity_service.dart';
 import '../../services/sync_service.dart';
 import '../../database/local_database.dart';
+import '../../widgets/top_fade_overlay.dart';
 import '../admin/admin_screen.dart';
 import '../auth/login_screen.dart';
 
@@ -30,11 +31,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadPendingCount() async {
     try {
-      final localDB = LocalDatabase();
-      final penduduk = await localDB.getUnsyncedPenduduk();
-      final keluarga = await localDB.getUnsyncedKeluarga();
+      final total = await LocalDatabase().getTotalPendingCount();
       if (mounted) {
-        setState(() => _pendingSyncCount = penduduk.length + keluarga.length);
+        setState(() => _pendingSyncCount = total);
       }
     } catch (_) {}
   }
@@ -74,16 +73,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isOnline = context.watch<ConnectivityService>().isOnline;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
+      // Fade di tepi atas layar: muncul setelah header gradient selesai
+      // scroll menghilang (expandedHeight = topInset + 175).
+      body: TopFadeOverlay(
+        fadeInAfter: MediaQuery.paddingOf(context).top + 175,
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+            // Inset-aware: status bar + top pad + content + bottom pad.
+            expandedHeight: MediaQuery.paddingOf(context).top + 175,
             pinned: false,
             automaticallyImplyLeading: false,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: AppTheme.gradientHeader,
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
+                decoration: AppTheme.gradientHeaderOf(context),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 24,
+                  20,
+                  20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -95,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             CircleAvatar(
                               radius: 34,
-                              backgroundColor: Colors.white.withOpacity(0.3),
+                              backgroundColor: Colors.white.withValues(alpha: 0.3),
                               backgroundImage: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
                                   ? CachedNetworkImageProvider(user.avatarUrl!)
                                   : null,
@@ -140,7 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 user?.email ?? '',
-                                style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 14),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -148,42 +157,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Row(
                                 children: [
                                   if (user != null && user.roles.isNotEmpty)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        user.roleLabel,
-                                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                                    Flexible(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          user.roleLabel,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(color: Colors.white, fontSize: 11),
+                                        ),
                                       ),
                                     ),
                                   const SizedBox(width: 8),
                                   // Online status badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: (isOnline ? AppTheme.success : AppTheme.warning).withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 6,
-                                          height: 6,
-                                          decoration: BoxDecoration(
-                                            color: isOnline ? AppTheme.success : AppTheme.warning,
-                                            shape: BoxShape.circle,
+                                  Flexible(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: (isOnline ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.3),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: BoxDecoration(
+                                              color: isOnline ? AppTheme.success : AppTheme.warning,
+                                              shape: BoxShape.circle,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          isOnline ? 'Online' : 'Offline',
-                                          style: const TextStyle(color: Colors.white, fontSize: 10),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isOnline ? 'Online' : 'Offline',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Colors.white, fontSize: 10),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -224,18 +241,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text('Informasi Akun', style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 12),
-                        _profileRow('Username', user?.username ?? '-'),
+                        _profileRow(context, 'Username', user?.username ?? '-'),
                         const Divider(height: 16),
-                        _profileRow('Email', user?.email ?? '-'),
+                        _profileRow(context, 'Email', user?.email ?? '-'),
                         const Divider(height: 16),
-                        _profileRow('Role', user?.roleLabel ?? '-'),
+                        _profileRow(context, 'Role', user?.roleLabel ?? '-'),
                         if (user?.desaName != null) ...[
                           const Divider(height: 16),
-                          _profileRow('Desa', user!.desaName!),
+                          _profileRow(context, 'Desa', user!.desaName!),
                         ],
                         if (user?.kecamatanName != null) ...[
                           const Divider(height: 16),
-                          _profileRow('Kecamatan', user!.kecamatanName!),
+                          _profileRow(context, 'Kecamatan', user!.kecamatanName!),
                         ],
                       ],
                     ),
@@ -258,7 +275,7 @@ Card(
                           context,
                           icon: Icons.settings_outlined,
                           title: 'Pengaturan Offline',
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.textSecondaryOf(context),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const AdminScreen()),
                           ),
@@ -296,16 +313,17 @@ Card(
             ),
           ),
         ],
+        ),
       ),
     );
   }
 
-  Widget _profileRow(String label, String value) {
+  Widget _profileRow(BuildContext context, String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+        Text(label, style: TextStyle(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.textPrimaryOf(context))),
       ],
     );
   }
@@ -314,7 +332,7 @@ Card(
     return ListTile(
       leading: Icon(icon, color: color, size: 22),
       title: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 14)),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
+      trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textHintOf(context), size: 20),
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
       minLeadingWidth: 0,
@@ -405,10 +423,10 @@ Card(
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _pendingSyncCount > 0 ? AppTheme.warning.withOpacity(0.5) : AppTheme.success.withOpacity(0.3),
+          color: _pendingSyncCount > 0 ? AppTheme.warning.withValues(alpha: 0.5) : AppTheme.success.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -432,7 +450,7 @@ Card(
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (isOnline ? AppTheme.success : AppTheme.warning).withOpacity(0.1),
+                  color: (isOnline ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -464,7 +482,7 @@ Card(
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.warning.withOpacity(0.15),
+                    color: AppTheme.warning.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -495,7 +513,7 @@ Card(
                 label: Text(_isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'),
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.primary,
-                  backgroundColor: AppTheme.primary.withOpacity(0.08),
+                  backgroundColor: AppTheme.primary.withValues(alpha: 0.08),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),

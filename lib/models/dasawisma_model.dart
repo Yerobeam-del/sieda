@@ -24,6 +24,10 @@ class KelompokDasawismaModel {
   final int? totalAnggota;
   final bool active;
 
+  /// true bila record ini berasal dari antrian offline (belum tersinkron
+  /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
+  final bool isPendingSync;
+
   KelompokDasawismaModel({
     required this.id,
     required this.nama,
@@ -34,9 +38,13 @@ class KelompokDasawismaModel {
     this.totalKeluarga,
     this.totalAnggota,
     this.active = true,
+    this.isPendingSync = false,
   });
 
-  factory KelompokDasawismaModel.fromJson(Map<String, dynamic> json) {
+  factory KelompokDasawismaModel.fromJson(
+    Map<String, dynamic> json, {
+    bool isPendingSync = false,
+  }) {
     bool parseActive(dynamic val) => val == 1 || val == true || val == '1';
 
     // Parse nested dusun
@@ -60,6 +68,7 @@ class KelompokDasawismaModel {
       totalKeluarga: _parseIntNullable(json['total_keluarga']),
       totalAnggota: _parseIntNullable(json['total_anggota']),
       active: parseActive(json['active']),
+      isPendingSync: isPendingSync,
     );
   }
 
@@ -110,6 +119,10 @@ class DasawismaKesehatanModel {
   final int lansia;
   final int totalKeluarga;
 
+  /// true bila record ini berasal dari antrian offline (belum tersinkron
+  /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
+  final bool isPendingSync;
+
   DasawismaKesehatanModel({
     this.id,
     this.kelompok,
@@ -120,6 +133,7 @@ class DasawismaKesehatanModel {
     this.stunting = 0,
     this.lansia = 0,
     this.totalKeluarga = 0,
+    this.isPendingSync = false,
   });
 
   factory DasawismaKesehatanModel.fromJson(Map<String, dynamic> json) {
@@ -142,6 +156,8 @@ class DasawismaKeluargaData {
   final int configYear;
   final int? jumlahKK;
   final int? jumlahBalita;
+  final int? jumlahBalitaLakiLaki;
+  final int? jumlahBalitaPerempuan;
   final int? jumlahPus;
   final int? jumlahWus;
   final int? jumlahButa;
@@ -149,24 +165,34 @@ class DasawismaKeluargaData {
   final int? jumlahIbuMenyusui;
   final int? jumlahLansia;
   final String? makananPokok;
+  final int? idJenisMakananPokok;
   final String? statusJamban;
+  final int? jumlahJamban;
+  final int? idSumberAir;
+  final String? sumberAir;
   final int? jumlahGiziKurang;
   final int? jumlahGiziBuruk;
   final int? jumlahStunting;
   final int? jumlahDisabilitas;
-  final String? sumberAir;
   final String? statusTempatPembuanganSampah;
   final String? statusSaluranPembuangan;
   final String? statusStickerP4k;
   final String? kriteriaRumah;
   final String? statusAktifitasUp2k;
+  final int? idJenisUsahaUp2k;
   final String? statusAktifitasKukl;
+
+  /// true bila record ini berasal dari antrian offline (belum tersinkron
+  /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
+  final bool isPendingSync;
 
   DasawismaKeluargaData({
     required this.noKK,
     required this.configYear,
     this.jumlahKK,
     this.jumlahBalita,
+    this.jumlahBalitaLakiLaki,
+    this.jumlahBalitaPerempuan,
     this.jumlahPus,
     this.jumlahWus,
     this.jumlahButa,
@@ -174,21 +200,29 @@ class DasawismaKeluargaData {
     this.jumlahIbuMenyusui,
     this.jumlahLansia,
     this.makananPokok,
+    this.idJenisMakananPokok,
     this.statusJamban,
+    this.jumlahJamban,
+    this.idSumberAir,
+    this.sumberAir,
     this.jumlahGiziKurang,
     this.jumlahGiziBuruk,
     this.jumlahStunting,
     this.jumlahDisabilitas,
-    this.sumberAir,
     this.statusTempatPembuanganSampah,
     this.statusSaluranPembuangan,
     this.statusStickerP4k,
     this.kriteriaRumah,
     this.statusAktifitasUp2k,
+    this.idJenisUsahaUp2k,
     this.statusAktifitasKukl,
+    this.isPendingSync = false,
   });
 
-  factory DasawismaKeluargaData.fromJson(Map<String, dynamic> json) {
+  factory DasawismaKeluargaData.fromJson(
+    Map<String, dynamic> json, {
+    bool isPendingSync = false,
+  }) {
     String? extractName(dynamic val) {
       if (val is Map) return val['nama']?.toString();
       return val?.toString();
@@ -199,6 +233,8 @@ class DasawismaKeluargaData {
       configYear: _parseInt(json['config_year']),
       jumlahKK: _parseIntNullable(json['jumlah_kk']),
       jumlahBalita: _parseIntNullable(json['jumlah_balita']),
+      jumlahBalitaLakiLaki: _parseIntNullable(json['jumlah_balita_laki_laki']),
+      jumlahBalitaPerempuan: _parseIntNullable(json['jumlah_balita_perempuan']),
       jumlahPus: _parseIntNullable(json['jumlah_pus']),
       jumlahWus: _parseIntNullable(json['jumlah_wus']),
       jumlahButa: _parseIntNullable(json['jumlah_buta']),
@@ -206,18 +242,23 @@ class DasawismaKeluargaData {
       jumlahIbuMenyusui: _parseIntNullable(json['jumlah_ibu_menyusui']),
       jumlahLansia: _parseIntNullable(json['jumlah_lansia']),
       makananPokok: json['makanan_pokok']?.toString(),
+      idJenisMakananPokok: _parseIntNullable(json['id_jenis_makanan_pokok']),
       statusJamban: json['status_jamban']?.toString(),
+      jumlahJamban: _parseIntNullable(json['jumlah_jamban']),
+      idSumberAir: _parseIntNullable(json['id_sumber_air']),
+      sumberAir: extractName(json['sumber_air']),
       jumlahGiziKurang: _parseIntNullable(json['jumlah_gizi_kurang']),
       jumlahGiziBuruk: _parseIntNullable(json['jumlah_gizi_buruk']),
       jumlahStunting: _parseIntNullable(json['jumlah_stunting']),
       jumlahDisabilitas: _parseIntNullable(json['jumlah_disabilitas']),
-      sumberAir: extractName(json['sumber_air']),
       statusTempatPembuanganSampah: json['status_tempat_pembuangan_sampah']?.toString(),
       statusSaluranPembuangan: json['status_saluran_pembuangan']?.toString(),
       statusStickerP4k: json['status_sticker_p4k']?.toString(),
       kriteriaRumah: json['kriteria_rumah']?.toString(),
       statusAktifitasUp2k: json['status_aktifitas_up2k']?.toString(),
+      idJenisUsahaUp2k: _parseIntNullable(json['id_jenis_usaha_up2k']),
       statusAktifitasKukl: json['status_aktifitas_kukl']?.toString(),
+      isPendingSync: isPendingSync,
     );
   }
 
@@ -226,6 +267,8 @@ class DasawismaKeluargaData {
         'config_year': configYear,
         'jumlah_kk': jumlahKK,
         'jumlah_balita': jumlahBalita,
+        'jumlah_balita_laki_laki': jumlahBalitaLakiLaki,
+        'jumlah_balita_perempuan': jumlahBalitaPerempuan,
         'jumlah_pus': jumlahPus,
         'jumlah_wus': jumlahWus,
         'jumlah_buta': jumlahButa,
@@ -233,17 +276,20 @@ class DasawismaKeluargaData {
         'jumlah_ibu_menyusui': jumlahIbuMenyusui,
         'jumlah_lansia': jumlahLansia,
         'makanan_pokok': makananPokok,
+        'id_jenis_makanan_pokok': idJenisMakananPokok,
         'status_jamban': statusJamban,
+        'jumlah_jamban': jumlahJamban,
+        'id_sumber_air': idSumberAir,
         'jumlah_gizi_kurang': jumlahGiziKurang,
         'jumlah_gizi_buruk': jumlahGiziBuruk,
         'jumlah_stunting': jumlahStunting,
         'jumlah_disabilitas': jumlahDisabilitas,
-        'id_sumber_air': null,
         'status_tempat_pembuangan_sampah': statusTempatPembuanganSampah,
         'status_saluran_pembuangan': statusSaluranPembuangan,
         'status_sticker_p4k': statusStickerP4k,
         'kriteria_rumah': kriteriaRumah,
         'status_aktifitas_up2k': statusAktifitasUp2k,
+        'id_jenis_usaha_up2k': idJenisUsahaUp2k,
         'status_aktifitas_kukl': statusAktifitasKukl,
       };
 }

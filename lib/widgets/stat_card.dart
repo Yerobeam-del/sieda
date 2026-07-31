@@ -21,17 +21,18 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardColor = color ?? AppTheme.primary;
+    final cs = Theme.of(context).colorScheme;
     return ScaleOnTap(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+          border: Border.all(color: AppTheme.borderOf(context).withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: cardColor.withOpacity(0.06),
+              color: cardColor.withValues(alpha: 0.06),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -44,7 +45,7 @@ class StatCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: cardColor.withOpacity(0.1),
+                color: cardColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: cardColor, size: 22),
@@ -54,7 +55,7 @@ class StatCard extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: cs.onSurface,
                     fontSize: 24,
                   ),
             ),
@@ -62,7 +63,7 @@ class StatCard extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: cs.onSurfaceVariant,
                     fontSize: 12,
                   ),
               maxLines: 2,
@@ -93,7 +94,7 @@ class MiniStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: cardColor.withOpacity(0.08),
+        color: cardColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -111,7 +112,7 @@ class MiniStatCard extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cardColor.withOpacity(0.8),
+                  color: cardColor.withValues(alpha: 0.8),
                 ),
             textAlign: TextAlign.center,
           ),
@@ -137,22 +138,23 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return ScaleOnTap(
       onTap: onTap,
       child: Container(
         padding: padding ?? const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(borderRadius),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
             BoxShadow(
-              color: AppTheme.primary.withOpacity(0.03),
+              color: AppTheme.primary.withValues(alpha: 0.03),
               blurRadius: 24,
               offset: const Offset(0, -4),
             ),

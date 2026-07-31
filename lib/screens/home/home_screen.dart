@@ -6,10 +6,17 @@ import '../../services/connectivity_service.dart';
 import '../../services/sync_service.dart';
 import '../../database/local_database.dart';
 import '../../widgets/connectivity_banner.dart';
+import '../../widgets/animations/page_transitions.dart';
+import '../../providers/penduduk_provider.dart';
+import '../../providers/keluarga_provider.dart';
+import '../../providers/catatan_provider.dart';
 import '../catatan/catatan_list_screen.dart';
+import '../catatan/catatan_form_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../penduduk/penduduk_list_screen.dart';
+import '../penduduk/forms/penduduk_form_screen.dart';
 import '../keluarga/keluarga_list_screen.dart';
+import '../keluarga/forms/keluarga_form_screen.dart';
 import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -39,11 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadPendingCount() async {
     try {
-      final localDB = LocalDatabase();
-      final penduduk = await localDB.getUnsyncedPenduduk();
-      final keluarga = await localDB.getUnsyncedKeluarga();
+      final total = await LocalDatabase().getTotalPendingCount();
       if (mounted) {
-        setState(() => _pendingSyncCount = penduduk.length + keluarga.length);
+        setState(() => _pendingSyncCount = total);
       }
     } catch (_) {}
   }
@@ -95,15 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       extendBody: true,
       body: ConnectivityBanner(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          child: IndexedStack(
-            key: ValueKey(_currentIndex),
-            index: _currentIndex,
-            children: _screens,
-          ),
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
         ),
       ),
       bottomNavigationBar: _buildNavigationBar(context),
@@ -113,6 +112,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget? _buildFab(BuildContext context) {
     switch (_currentIndex) {
+      case 1: // Penduduk
+        return FloatingActionButton.extended(
+          onPressed: () {
+            final prov = context.read<PendudukProvider>();
+            Navigator.of(context).push(
+              SlideTransitionRoute(page: const PendudukFormScreen()),
+            ).then((result) {
+              if (result == true && mounted) {
+                prov.loadPenduduk(refresh: true);
+              }
+            });
+          },
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.person_add_rounded, size: 20),
+          label: const Text('Tambah'),
+        );
+      case 2: // Keluarga
+        return FloatingActionButton.extended(
+          onPressed: () {
+            final prov = context.read<KeluargaProvider>();
+            Navigator.of(context).push(
+              SlideTransitionRoute(page: const KeluargaFormScreen()),
+            ).then((result) {
+              if (result == true && mounted) {
+                prov.loadKeluarga(refresh: true);
+              }
+            });
+          },
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+          label: const Text('Tambah'),
+        );
+      case 3: // Ibu & Anak
+        return FloatingActionButton.extended(
+          onPressed: () {
+            final prov = context.read<CatatanProvider>();
+            Navigator.of(context).push(
+              SlideTransitionRoute(page: const CatatanFormScreen()),
+            ).then((result) {
+              if (result == true && mounted) {
+                prov.loadCatatan(refresh: true);
+              }
+            });
+          },
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_rounded, size: 20),
+          label: const Text('Tambah'),
+        );
       case 4: // Profile — sync button
         return FloatingActionButton(
           onPressed: _syncData,
@@ -152,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () {
             context.read<DashboardProvider>().loadDashboard();
           },
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           foregroundColor: AppTheme.primary,
           tooltip: 'Refresh Dashboard',
           child: const Icon(Icons.refresh_rounded),
@@ -165,10 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNavigationBar(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),

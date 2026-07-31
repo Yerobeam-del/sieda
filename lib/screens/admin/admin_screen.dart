@@ -16,11 +16,18 @@ class _AdminScreenState extends State<AdminScreen> {
   final _localDB = LocalDatabase();
   Map<String, int> _cacheStats = {};
   Map<String, int> _pendingStats = {};
+  Map<String, int> _dasawismaPendingByType = {};
   int _totalCache = 0;
   int _totalPending = 0;
+  int _backoffCount = 0;
+  int _dbSizeBytes = 0;
+  int _lastCleanupDeleted = 0;
+  DateTime? _lastCleanupAt;
   bool _isLoading = true;
   bool _isSyncing = false;
   String? _lastSyncMessage;
+  DateTime? _lastSyncAt;
+  SyncResult? _lastSyncResult;
 
   @override
   void initState() {
@@ -33,15 +40,24 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       final cacheStats = await _localDB.getCacheStats();
       final pendingStats = await _localDB.getPendingStats();
+      final dasawismaByType = await _localDB.getPendingDasawismaByType();
       final totalCache = await _localDB.getTotalCacheCount();
       final totalPending = await _localDB.getTotalPendingCount();
+      final backoffCount = await _localDB.getPendingBackoffCount();
+      final dbSizeBytes = await _localDB.getDatabaseSizeBytes();
+      final cleanupStats = await _localDB.getLastCleanupStats();
       await _loadActivityLogs();
       if (mounted) {
         setState(() {
           _cacheStats = cacheStats;
           _pendingStats = pendingStats;
+          _dasawismaPendingByType = dasawismaByType;
           _totalCache = totalCache;
           _totalPending = totalPending;
+          _backoffCount = backoffCount;
+          _dbSizeBytes = dbSizeBytes;
+          _lastCleanupDeleted = cleanupStats.deleted;
+          _lastCleanupAt = DateTime.tryParse(cleanupStats.at ?? '');
           _isLoading = false;
         });
       }
@@ -65,6 +81,8 @@ class _AdminScreenState extends State<AdminScreen> {
       setState(() {
         _isSyncing = false;
         _lastSyncMessage = result.message;
+        _lastSyncAt = result.lastSyncAt;
+        _lastSyncResult = result;
       });
       _showSnackbar(result.message, result.failed > 0 ? AppTheme.warning : AppTheme.success);
     }
@@ -72,7 +90,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _confirmClearCache() async {
     if (_totalCache == 0) {
-      _showSnackbar('Tidak ada cache untuk dihapus.', AppTheme.textHint);
+      _showSnackbar('Tidak ada cache untuk dihapus.', AppTheme.textHintOf(context));
       return;
     }
 
@@ -89,7 +107,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _confirmClearPending() async {
     if (_totalPending == 0) {
-      _showSnackbar('Tidak ada data pending.', AppTheme.textHint);
+      _showSnackbar('Tidak ada data pending.', AppTheme.textHintOf(context));
       return;
     }
 
@@ -131,7 +149,7 @@ class _AdminScreenState extends State<AdminScreen> {
             Expanded(child: Text(title, style: const TextStyle(fontSize: 16))),
           ],
         ),
-        content: Text(content, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+        content: Text(content, style: TextStyle(fontSize: 13, color: AppTheme.textSecondaryOf(ctx))),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
           ElevatedButton(
@@ -201,7 +219,13 @@ class _AdminScreenState extends State<AdminScreen> {
                 _buildSyncStatusCard(),
                 const SizedBox(height: 24),
 
-                // ============ SECTION 2: RINCIAN PENDING ============
+                // ============ SECTION 2: STATISTIK DATABASE ============
+                _sectionHeader('Statistik Database'),
+                const SizedBox(height: 12),
+                _buildDatabaseStatsSection(),
+                const SizedBox(height: 24),
+
+                // ============ SECTION 3: RINCIAN PENDING ============
                 _sectionHeader('Data Pending per Tipe'),
                 const SizedBox(height: 12),
                 _buildPendingDetails(),
@@ -282,7 +306,7 @@ class _AdminScreenState extends State<AdminScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: (isOnline ? AppTheme.success : AppTheme.warning).withOpacity(0.1),
+                  color: (isOnline ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -323,7 +347,7 @@ class _AdminScreenState extends State<AdminScreen> {
             child: LinearProgressIndicator(
               value: _totalPending > 0 ? 0.15 : 1.0,
               minHeight: 6,
-              backgroundColor: AppTheme.border,
+              backgroundColor: AppTheme.borderOf(context),
               valueColor: AlwaysStoppedAnimation<Color>(
                 _totalPending > 0 ? AppTheme.warning : AppTheme.success,
               ),
@@ -336,6 +360,21 @@ class _AdminScreenState extends State<AdminScreen> {
                 : 'Semua data sudah tersinkronisasi',
             style: TextStyle(fontSize: 11, color: _totalPending > 0 ? AppTheme.warning : AppTheme.success),
           ),
+          if (_backoffCount > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.schedule_rounded, size: 13, color: AppTheme.info),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '$_backoffCount data menunggu retry otomatis (backoff)',
+                    style: TextStyle(fontSize: 11, color: AppTheme.info),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
 
           if (_lastSyncMessage != null)
@@ -343,7 +382,110 @@ class _AdminScreenState extends State<AdminScreen> {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 _lastSyncMessage!,
-                style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondaryOf(context), fontStyle: FontStyle.italic),
+              ),
+            ),
+
+          if (_lastSyncAt != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule_rounded, size: 13, color: AppTheme.textHintOf(context)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Terakhir: ${_formatTimestamp(_lastSyncAt!.toIso8601String())}',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context)),
+                  ),
+                ],
+              ),
+            ),
+
+          // Per-type result dari sinkronisasi terakhir
+          if (_lastSyncResult != null && (_lastSyncResult!.success > 0 || _lastSyncResult!.failed > 0))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  ...(_lastSyncResult!.successByType.entries.map((e) => _typeResultChip(e.key, e.value, isSuccess: true))),
+                  ...(_lastSyncResult!.failedByType.entries.map((e) => _typeResultChip(e.key, e.value, isSuccess: false))),
+                ],
+              ),
+            ),
+
+          // Rincian data yang ditunda (menunggu keluarga tersinkronkan)
+          if (_lastSyncResult != null && _lastSyncResult!.deferred > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.info.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.info.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_lastSyncResult!.deferred} data ditunda (menunggu keluarga tersinkronkan):',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.info),
+                    ),
+                    const SizedBox(height: 4),
+                    ..._lastSyncResult!.deferredItems.take(3).map((d) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            '- $d',
+                            style: TextStyle(fontSize: 10, color: AppTheme.textSecondaryOf(context)),
+                          ),
+                        )),
+                    if (_lastSyncResult!.deferredItems.length > 3)
+                      Text(
+                        'dan ${_lastSyncResult!.deferredItems.length - 3} lainnya...',
+                        style: TextStyle(fontSize: 10, color: AppTheme.textHintOf(context), fontStyle: FontStyle.italic),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Rincian kegagalan terakhir
+          if (_lastSyncResult != null && _lastSyncResult!.failures.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_lastSyncResult!.failures.length} data gagal terkirim:',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.error),
+                    ),
+                    const SizedBox(height: 4),
+                    ..._lastSyncResult!.failures.take(3).map((f) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            '- $f',
+                            style: TextStyle(fontSize: 10, color: AppTheme.textSecondaryOf(context)),
+                          ),
+                        )),
+                    if (_lastSyncResult!.failures.length > 3)
+                      Text(
+                        'dan ${_lastSyncResult!.failures.length - 3} lainnya...',
+                        style: TextStyle(fontSize: 10, color: AppTheme.textHintOf(context), fontStyle: FontStyle.italic),
+                      ),
+                  ],
+                ),
               ),
             ),
 
@@ -364,6 +506,149 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  // ==================== DATABASE STATS SECTION ====================
+
+  Widget _buildDatabaseStatsSection() {
+    final cs = Theme.of(context).colorScheme;
+    final typeLabels = {
+      'Penduduk': (Icons.people_outline_rounded, AppTheme.primary),
+      'Keluarga': (Icons.family_restroom_outlined, AppTheme.info),
+      'Catatan': (Icons.baby_changing_station_rounded, AppTheme.female),
+      'Dasawisma': (Icons.groups_outlined, AppTheme.success),
+      'Anggota': (Icons.group_add_outlined, AppTheme.warning),
+    };
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ukuran database
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.storage_rounded, size: 18, color: AppTheme.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Ukuran Database', style: const TextStyle(fontSize: 13))),
+                Text(
+                  _formatBytes(_dbSizeBytes),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Total baris pending per tipe
+            Text('Baris Pending per Tipe',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondaryOf(context))),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: typeLabels.entries.map((entry) {
+                final count = _pendingStats[entry.key] ?? 0;
+                final (icon, color) = entry.value;
+                final active = count > 0;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (active ? color : AppTheme.textHintOf(context)).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 14, color: active ? color : AppTheme.textHintOf(context)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${entry.key}: $count',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: active ? color : AppTheme.textHintOf(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            // Info cleanup terakhir
+            Row(
+              children: [
+                Icon(Icons.cleaning_services_rounded, size: 16, color: AppTheme.info),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Cleanup Terakhir', style: const TextStyle(fontSize: 13))),
+                Text(
+                  _lastCleanupAt != null
+                      ? _formatTimestamp(_lastCleanupAt!.toIso8601String())
+                      : 'Belum pernah',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.info.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.info.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _lastCleanupDeleted > 0 ? Icons.delete_rounded : Icons.check_circle_outline_rounded,
+                    size: 16,
+                    color: _lastCleanupDeleted > 0 ? AppTheme.info : AppTheme.success,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _lastCleanupAt == null
+                          ? 'Pembersihan otomatis akan berjalan saat aplikasi dibuka (menghapus data synced berusia > 30 hari).'
+                          : '$_lastCleanupDeleted item synced lama dihapus pada pembersihan terakhir.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondaryOf(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const kb = 1024;
+    const mb = kb * 1024;
+    if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(2)} MB';
+    if (bytes >= kb) return '${(bytes / kb).toStringAsFixed(1)} KB';
+    return '$bytes B';
+  }
+
   // ==================== PENDING DETAILS ====================
 
   Widget _buildPendingDetails() {
@@ -372,6 +657,7 @@ class _AdminScreenState extends State<AdminScreen> {
       'Keluarga': Icons.family_restroom_outlined,
       'Catatan': Icons.baby_changing_station_rounded,
       'Dasawisma': Icons.groups_outlined,
+      'Anggota': Icons.group_add_outlined,
     };
 
     final colors = {
@@ -379,6 +665,7 @@ class _AdminScreenState extends State<AdminScreen> {
       'Keluarga': AppTheme.info,
       'Catatan': AppTheme.female,
       'Dasawisma': AppTheme.success,
+      'Anggota': AppTheme.warning,
     };
 
     final hasData = _pendingStats.values.any((c) => c > 0);
@@ -393,59 +680,133 @@ class _AdminScreenState extends State<AdminScreen> {
         padding: const EdgeInsets.all(16),
         child: hasData
           ? Column(
-              children: _pendingStats.entries.map((entry) {
-                final label = entry.key;
-                final count = entry.value;
-                final icon = labels[label] ?? Icons.pending_rounded;
-                final color = colors[label] ?? AppTheme.textHint;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ..._pendingStats.entries.map((entry) {
+                  final label = entry.key;
+                  final count = entry.value;
+                  final icon = labels[label] ?? Icons.pending_rounded;
+                  final color = colors[label] ?? AppTheme.textHintOf(context);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(icon, size: 18, color: color),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: count > 0 ? AppTheme.warning.withValues(alpha: 0.15) : AppTheme.success.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$count',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: count > 0 ? AppTheme.warning : AppTheme.success,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Icon(icon, size: 18, color: color),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: count > 0 ? AppTheme.warning.withOpacity(0.15) : AppTheme.success.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$count',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: count > 0 ? AppTheme.warning : AppTheme.success,
+                        // Breakdown dasawisma per tipe (kelompok / kesehatan keluarga)
+                        if (label == 'Dasawisma' && count > 0) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 38, top: 4),
+                            child: Row(
+                              children: [
+                                Icon(Icons.subdirectory_arrow_right_rounded, size: 14, color: AppTheme.textHintOf(context)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Kelompok',
+                                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)),
+                                  ),
+                                ),
+                                _dasawismaCountChip('kelompok'),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Kesehatan Keluarga',
+                                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)),
+                                  ),
+                                ),
+                                _dasawismaCountChip('kesehatan'),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+              ],
             )
-          : const Center(
+          : Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.cloud_done_rounded, size: 20, color: AppTheme.success),
-                    SizedBox(width: 8),
-                    Text('Tidak ada data pending', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    const Icon(Icons.cloud_done_rounded, size: 20, color: AppTheme.success),
+                    const SizedBox(width: 8),
+                    Text('Tidak ada data pending', style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 13)),
                   ],
                 ),
               ),
             ),
-            ),
+      ),
+    );
+  }
+
+  Widget _typeResultChip(String type, int count, {required bool isSuccess}) {
+    final color = isSuccess ? AppTheme.success : AppTheme.error;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '$type: $count ${isSuccess ? 'ok' : 'gagal'}',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _dasawismaCountChip(String tipe) {
+    final count = _dasawismaPendingByType[tipe] ?? 0;
+    final active = count > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: active ? AppTheme.success.withValues(alpha: 0.12) : AppTheme.textHintOf(context).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: active ? AppTheme.success : AppTheme.textHintOf(context),
+        ),
+      ),
     );
   }
 
@@ -489,9 +850,9 @@ class _AdminScreenState extends State<AdminScreen> {
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  Icon(icon, size: 16, color: AppTheme.textHint),
+                  Icon(icon, size: 16, color: AppTheme.textHintOf(context)),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
+                  Expanded(child: Text(label, style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)))),
                   Text('$count', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ],
               ),
@@ -500,7 +861,7 @@ class _AdminScreenState extends State<AdminScreen> {
           const Divider(height: 16),
           Row(
             children: [
-              const Icon(Icons.storage_rounded, size: 16, color: AppTheme.textPrimary),
+              Icon(Icons.storage_rounded, size: 16, color: AppTheme.textPrimaryOf(context)),
               const SizedBox(width: 8),
               const Text('Total Cache', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const Spacer(),
@@ -517,7 +878,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 label: const Text('Hapus Semua Cache'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.error,
-                  side: BorderSide(color: AppTheme.error.withOpacity(0.3)),
+                  side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
@@ -573,22 +934,22 @@ class _AdminScreenState extends State<AdminScreen> {
                 label: const Text('Jalankan Pemeriksaan'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primary,
-                  side: BorderSide(color: AppTheme.primary.withOpacity(0.3)),
+                  side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             )
           else if (_isCheckingIntegrity)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Column(
                   children: [
-                    CircularProgressIndicator(strokeWidth: 2.5),
-                    SizedBox(height: 12),
+                    const CircularProgressIndicator(strokeWidth: 2.5),
+                    const SizedBox(height: 12),
                     Text('Memeriksa data offline...',
-                        style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
                   ],
                 ),
               ),
@@ -629,7 +990,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
+                      color: AppTheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -677,11 +1038,11 @@ class _AdminScreenState extends State<AdminScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.08),
+                                      color: AppTheme.primary.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(issue.tipe,
-                                        style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
+                                        style: TextStyle(fontSize: 9, color: AppTheme.textSecondaryOf(context))),
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
@@ -693,7 +1054,7 @@ class _AdminScreenState extends State<AdminScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(issue.detail,
-                                  style: const TextStyle(fontSize: 10, color: AppTheme.textHint)),
+                                  style: TextStyle(fontSize: 10, color: AppTheme.textHintOf(context))),
                             ],
                           ),
                         ),
@@ -733,7 +1094,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _confirmClearLogs() async {
     if (_activityLogs.isEmpty) {
-      _showSnackbar('Tidak ada log untuk dihapus.', AppTheme.textHint);
+      _showSnackbar('Tidak ada log untuk dihapus.', AppTheme.textHintOf(context));
       return;
     }
     final confirmed = await _showConfirmDialog(
@@ -748,7 +1109,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildActivityLogSection(BuildContext context) {
-    final logTypes = ['Semua', 'Penduduk', 'Keluarga', 'Catatan', 'Dasawisma', 'Sistem'];
+    final logTypes = ['Semua', 'Penduduk', 'Keluarga', 'Catatan', 'Dasawisma', 'Anggota', 'Sistem'];
     // Colors for each log type
     final typeColors = {
       'Semua': AppTheme.primary,
@@ -756,7 +1117,8 @@ class _AdminScreenState extends State<AdminScreen> {
       'Keluarga': AppTheme.info,
       'Catatan': AppTheme.female,
       'Dasawisma': AppTheme.success,
-      'Sistem': AppTheme.textSecondary,
+      'Anggota': AppTheme.warning,
+      'Sistem': AppTheme.textSecondaryOf(context),
     };
 
     return Card(
@@ -773,9 +1135,9 @@ class _AdminScreenState extends State<AdminScreen> {
             // Log count + clear button
             Row(
               children: [
-                Icon(Icons.history_rounded, size: 16, color: AppTheme.textHint),
+                Icon(Icons.history_rounded, size: 16, color: AppTheme.textHintOf(context)),
                 const SizedBox(width: 6),
-                Text('$_logCount entri', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                Text('$_logCount entri', style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context))),
               const Spacer(),
               if (_activityLogs.isNotEmpty)
                 GestureDetector(
@@ -783,7 +1145,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.error.withOpacity(0.1),
+                      color: AppTheme.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -807,7 +1169,7 @@ class _AdminScreenState extends State<AdminScreen> {
               scrollDirection: Axis.horizontal,
               children: logTypes.map((type) {
                 final isActive = (_logFilter == null && type == 'Semua') || _logFilter == type;
-                final color = typeColors[type] ?? AppTheme.textHint;
+                final color = typeColors[type] ?? AppTheme.textHintOf(context);
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: GestureDetector(
@@ -819,10 +1181,10 @@ class _AdminScreenState extends State<AdminScreen> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: isActive ? color.withOpacity(0.12) : Colors.transparent,
+                        color: isActive ? color.withValues(alpha: 0.12) : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isActive ? color.withOpacity(0.3) : AppTheme.border,
+                          color: isActive ? color.withValues(alpha: 0.3) : AppTheme.borderOf(context),
                         ),
                       ),
                       child: Text(
@@ -830,7 +1192,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                          color: isActive ? color : AppTheme.textSecondary,
+                          color: isActive ? color : AppTheme.textSecondaryOf(context),
                         ),
                       ),
                     ),
@@ -843,15 +1205,15 @@ class _AdminScreenState extends State<AdminScreen> {
 
           // Log list or empty state
           if (_activityLogs.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.history_rounded, size: 20, color: AppTheme.textHint),
-                    SizedBox(width: 8),
-                    Text('Belum ada aktivitas tercatat', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    Icon(Icons.history_rounded, size: 20, color: AppTheme.textHintOf(context)),
+                    const SizedBox(width: 8),
+                    Text('Belum ada aktivitas tercatat', style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 12)),
                   ],
                 ),
               ),
@@ -865,7 +1227,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 final deskripsi = log['deskripsi'] as String? ?? '';
                 final detail = log['detail'] as String? ?? '';
                 final createdAt = log['created_at'] as String? ?? '';
-                final color = typeColors[tipe] ?? AppTheme.textHint;
+                final color = typeColors[tipe] ?? AppTheme.textHintOf(context);
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 6),
@@ -893,7 +1255,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: color.withOpacity(0.1),
+                                    color: color.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(tipe, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600)),
@@ -903,29 +1265,29 @@ class _AdminScreenState extends State<AdminScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primary.withOpacity(0.08),
+                                    color: AppTheme.primary.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: Text(aksi, style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
+                                  child: Text(aksi, style: TextStyle(fontSize: 9, color: AppTheme.textSecondaryOf(context))),
                                 ),
                                 const Spacer(),
                                 Text(
                                   _formatTimestamp(createdAt),
-                                  style: const TextStyle(fontSize: 9, color: AppTheme.textHint),
+                                  style: TextStyle(fontSize: 9, color: AppTheme.textHintOf(context)),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 3),
                             Text(
                               deskripsi,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                              style: TextStyle(fontSize: 12, color: AppTheme.textPrimaryOf(context)),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             if (detail.isNotEmpty)
                               Text(
                                 detail,
-                                style: const TextStyle(fontSize: 10, color: AppTheme.textHint, fontStyle: FontStyle.italic),
+                                style: TextStyle(fontSize: 10, color: AppTheme.textHintOf(context), fontStyle: FontStyle.italic),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1004,14 +1366,14 @@ class _AdminScreenState extends State<AdminScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, size: 20, color: color),
       ),
       title: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: color)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
-      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textHint),
+      trailing: Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textHintOf(context)),
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
       minLeadingWidth: 0,

@@ -53,10 +53,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(milliseconds: 2200));
+    final auth = context.read<AuthProvider>();
+
+    // Tunggu restore sesi selesai (anti race condition) DAN minimal 2.2 detik
+    // untuk animasi branding, mana yang lebih lama.
+    await Future.wait<void>([
+      auth.ready,
+      Future.delayed(const Duration(milliseconds: 2200)),
+    ]);
     if (!mounted) return;
 
-    final auth = context.read<AuthProvider>();
     if (auth.isAuthenticated) {
       Navigator.of(context).pushReplacement(
         FadeRoute(page: const HomeScreen()),
@@ -100,10 +106,10 @@ class _SplashScreenState extends State<SplashScreen>
               child: Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     width: 1.5,
                   ),
                 ),
@@ -149,7 +155,7 @@ class _SplashScreenState extends State<SplashScreen>
                           .textTheme
                           .bodyLarge
                           ?.copyWith(
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                             fontSize: 15,
                           ),
                     ),
@@ -203,7 +209,7 @@ class _PulsingDotState extends State<_PulsingDot>
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.white.withOpacity(0.3 + (_controller.value * 0.2)),
+              color: Colors.white.withValues(alpha: 0.3 + (_controller.value * 0.2)),
               blurRadius: 8 + (_controller.value * 8),
             ),
           ],

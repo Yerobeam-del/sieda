@@ -3,11 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/helpers.dart';
+import '../../database/local_database.dart';
 import '../../models/catatan_model.dart';
 import '../../providers/catatan_provider.dart';
+import '../../services/activity_service.dart';
+import '../../services/connectivity_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
+import '../../widgets/pending_sync_badge.dart';
 import 'catatan_form_screen.dart';
 
 class CatatanDetailScreen extends StatefulWidget {
@@ -36,6 +40,11 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
       appBar: AppBar(
         title: const Text('Detail Catatan'),
         actions: [
+          if (prov.selectedCatatan?.isPendingSync == true)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Center(child: PendingSyncBadge()),
+            ),
           if (prov.selectedCatatan != null)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
@@ -83,10 +92,10 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
             _sectionTitle(context, Icons.person_rounded, 'Data Ibu', AppTheme.female),
             const SizedBox(height: 8),
             _infoCard(context, [
-              _infoRow('NIK Ibu', c.nikIbu ?? c.idWargaIbu ?? '-'),
-              _infoRow('Nama Ibu', c.namaIbu!),
-              _infoRow('No. KK', c.noKk ?? '-'),
-              _infoRow('Kelompok', c.kelompokDisplay),
+              _infoRow(context, 'NIK Ibu', c.nikIbu ?? c.idWargaIbu ?? '-'),
+              _infoRow(context, 'Nama Ibu', c.namaIbu!),
+              _infoRow(context, 'No. KK', c.noKk ?? '-'),
+              _infoRow(context, 'Kelompok', c.kelompokDisplay),
             ]),
             const SizedBox(height: 16),
           ],
@@ -96,8 +105,8 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
             _sectionTitle(context, Icons.person_rounded, 'Data Suami', AppTheme.male),
             const SizedBox(height: 8),
             _infoCard(context, [
-              _infoRow('NIK Suami', c.nikSuami ?? c.idWargaSuami ?? '-'),
-              _infoRow('Nama Suami', c.namaSuami!),
+              _infoRow(context, 'NIK Suami', c.nikSuami ?? c.idWargaSuami ?? '-'),
+              _infoRow(context, 'Nama Suami', c.namaSuami!),
             ]),
             const SizedBox(height: 16),
           ],
@@ -106,12 +115,12 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
           _sectionTitle(context, Icons.health_and_safety_rounded, 'Status Kehamilan', AppTheme.female),
           const SizedBox(height: 8),
           _infoCard(context, [
-            _infoRow('Status Ibu', c.statusIbuLabel),
+            _infoRow(context, 'Status Ibu', c.statusIbuLabel),
             // Hamil: tampilkan bulan, fallback ke tanggal_hamil (legacy)
-            if (c.bulanHamil != null) _infoRow('Bulan Hamil', DateFormat('MMMM', 'id').format(DateTime(2000, c.bulanHamil!))),
-            if (c.bulanHamil == null && c.tanggalHamil != null) _infoRow('Tanggal Hamil', c.tanggalHamil!),
-            if (c.tanggalMelahirkan != null) _infoRow('Tanggal Melahirkan', c.tanggalMelahirkan!),
-            if (c.tanggalNifasSelesai != null) _infoRow('Nifas Selesai', c.tanggalNifasSelesai!),
+            if (c.bulanHamil != null) _infoRow(context, 'Bulan Hamil', DateFormat('MMMM', 'id').format(DateTime(2000, c.bulanHamil!))),
+            if (c.bulanHamil == null && c.tanggalHamil != null) _infoRow(context, 'Tanggal Hamil', c.tanggalHamil!),
+            if (c.tanggalMelahirkan != null) _infoRow(context, 'Tanggal Melahirkan', c.tanggalMelahirkan!),
+            if (c.tanggalNifasSelesai != null) _infoRow(context, 'Nifas Selesai', c.tanggalNifasSelesai!),
           ]),
           const SizedBox(height: 16),
 
@@ -120,12 +129,12 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
             _sectionTitle(context, Icons.child_care_rounded, 'Data Bayi', AppTheme.success),
             const SizedBox(height: 8),
             _infoCard(context, [
-              _infoRow('Nama Bayi', c.namaBayi!),
-              _infoRow('Jenis Kelamin', c.jenisKelaminBayiLabel),
-              if (c.tanggalLahirBayi != null) _infoRow('Tanggal Lahir', c.tanggalLahirBayi!),
-              if (c.akteKelahiran != null) _infoRow('Akte Kelahiran', c.akteKelahiran!),
+              _infoRow(context, 'Nama Bayi', c.namaBayi!),
+              _infoRow(context, 'Jenis Kelamin', c.jenisKelaminBayiLabel),
+              if (c.tanggalLahirBayi != null) _infoRow(context, 'Tanggal Lahir', c.tanggalLahirBayi!),
+              if (c.akteKelahiran != null) _infoRow(context, 'Akte Kelahiran', c.akteKelahiran!),
               if (c.noAkteKelahiran != null && c.noAkteKelahiran!.isNotEmpty)
-                _infoRow('No. Akte', c.noAkteKelahiran!),
+                _infoRow(context, 'No. Akte', c.noAkteKelahiran!),
             ]),
             const SizedBox(height: 16),
           ],
@@ -135,20 +144,20 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
             _sectionTitle(context, Icons.warning_amber_rounded, 'Data Kematian', AppTheme.error),
             const SizedBox(height: 8),
             _infoCard(context, [
-              _infoRow('Status', c.statusKematianLabel),
-              if (c.namaMeninggal != null) _infoRow('Nama Meninggal', c.namaMeninggal!),
+              _infoRow(context, 'Status', c.statusKematianLabel),
+              if (c.namaMeninggal != null) _infoRow(context, 'Nama Meninggal', c.namaMeninggal!),
               if (c.jenisKelaminMeninggal != null)
-                _infoRow('Jenis Kelamin', Helpers.formatGender(c.jenisKelaminMeninggal)),
-              if (c.tanggalMeninggal != null) _infoRow('Tanggal Meninggal', c.tanggalMeninggal!),
+                _infoRow(context, 'Jenis Kelamin', Helpers.formatGender(c.jenisKelaminMeninggal)),
+              if (c.tanggalMeninggal != null) _infoRow(context, 'Tanggal Meninggal', c.tanggalMeninggal!),
               if (c.sebabMeninggal != null && c.sebabMeninggal!.isNotEmpty)
-                _infoRow('Sebab', c.sebabMeninggal!),
+                _infoRow(context, 'Sebab', c.sebabMeninggal!),
             ]),
             const SizedBox(height: 16),
           ],
 
           // ============ KETERANGAN ============
           if (c.keterangan != null && c.keterangan!.isNotEmpty) ...[
-            _sectionTitle(context, Icons.notes_rounded, 'Keterangan', AppTheme.textHint),
+            _sectionTitle(context, Icons.notes_rounded, 'Keterangan', AppTheme.textHintOf(context)),
             const SizedBox(height: 8),
 Card(
               elevation: 0,
@@ -160,7 +169,7 @@ Card(
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   c.keterangan!,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, height: 1.5),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textPrimaryOf(context), height: 1.5),
                 ),
               ),
             ),
@@ -176,7 +185,7 @@ Card(
               label: const Text('Hapus Catatan'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.error,
-                side: BorderSide(color: AppTheme.error.withOpacity(0.3)),
+                side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -198,7 +207,7 @@ Card(
         gradient: LinearGradient(
           colors: [
             isDeath ? AppTheme.error : statusColor,
-            (isDeath ? AppTheme.error : statusColor).withOpacity(0.7),
+            (isDeath ? AppTheme.error : statusColor).withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -206,7 +215,7 @@ Card(
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.3),
+            color: statusColor.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -231,14 +240,14 @@ Card(
           const SizedBox(height: 4),
           Text(
             'Tahun ${c.configYear}',
-            style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
           ),
           if (c.namaIbu != null) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -258,7 +267,7 @@ Card(
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: color),
@@ -291,7 +300,7 @@ Card(
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -299,12 +308,12 @@ Card(
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            child: Text(label, style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 12)),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(color: AppTheme.textPrimaryOf(context), fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -323,10 +332,29 @@ Card(
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              context.read<CatatanProvider>().deleteCatatan(id);
-              Navigator.of(context).pop(true);
+              final isOnline = context.read<ConnectivityService>().isOnline;
+              if (isOnline) {
+                await context.read<CatatanProvider>().deleteCatatan(id);
+              } else {
+                // Offline: antrikan DELETE agar terkirim saat koneksi kembali.
+                await LocalDatabase().queuePendingDeleteCatatan(id);
+                await ActivityService().logDelete(
+                  tipe: 'Catatan',
+                  nama: 'Catatan #$id',
+                  identifier: 'id: $id | Offline',
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Catatan akan dihapus saat online.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+              if (context.mounted) Navigator.of(context).pop(true);
             },
             child: const Text('Hapus', style: TextStyle(color: Colors.white)),
           ),

@@ -76,9 +76,11 @@ class DusunBarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final data = perDusun;
-    if (data.isEmpty) return _emptyChart('Belum ada data dusun',
-        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
-        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
+    if (data.isEmpty) {
+      return _emptyChart('Belum ada data dusun',
+          iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+          textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
+    }
 
     final maxValue = data.map((e) => e.totalKeluarga).reduce((a, b) => a > b ? a : b).toDouble();
     final colors = [
@@ -186,9 +188,11 @@ class MonthlyLineChart extends StatelessWidget {
       pendudukSpots.add(FlSpot(i.toDouble(), pdValue));
     }
 
-    if (keluargaSpots.isEmpty) return _emptyChart('Belum ada data',
-        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
-        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
+    if (keluargaSpots.isEmpty) {
+      return _emptyChart('Belum ada data',
+          iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+          textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
+    }
 
     final maxY = pendudukSpots.isNotEmpty
         ? (pendudukSpots.last.y * 1.2)
@@ -306,9 +310,11 @@ class DusunPendudukChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final data = perDusun;
-    if (data.isEmpty) return _emptyChart('Belum ada data',
-        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
-        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
+    if (data.isEmpty) {
+      return _emptyChart('Belum ada data',
+          iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+          textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
+    }
 
     final maxValue = data.map((e) => e.totalPenduduk).reduce((a, b) => a > b ? a : b).toDouble();
     final colors = [

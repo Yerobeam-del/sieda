@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -21,10 +23,66 @@ class LocalDatabase {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 4,
       onCreate: _createTables,
+      onUpgrade: _upgradeTables,
     );
   }
+
+  /// Migrasi versi lama:
+  /// - v1 -> v2: tambah kolom retry_count, last_error, next_retry_at untuk
+  ///   mendukung retry dengan backoff pada antrian pending.
+  /// - v2 -> v3: tambah kolom action di pending_dasawisma agar sinkronisasi
+  ///   bisa membedakan CREATE / UPDATE / DELETE.
+  Future<void> _upgradeTables(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      for (final table in _pendingTables) {
+        final cols = await db.rawQuery('PRAGMA table_info($table)');
+        final names = cols.map((c) => c['name'] as String? ?? '').toSet();
+        if (!names.contains('retry_count')) {
+          await db.execute('ALTER TABLE $table ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0');
+        }
+        if (!names.contains('last_error')) {
+          await db.execute('ALTER TABLE $table ADD COLUMN last_error TEXT');
+        }
+        if (!names.contains('next_retry_at')) {
+          await db.execute('ALTER TABLE $table ADD COLUMN next_retry_at TEXT');
+        }
+      }
+    }
+    if (oldVersion < 3) {
+      final cols = await db.rawQuery('PRAGMA table_info(pending_dasawisma)');
+      final names = cols.map((c) => c['name'] as String? ?? '').toSet();
+      if (!names.contains('action')) {
+        await db.execute("ALTER TABLE pending_dasawisma ADD COLUMN action TEXT NOT NULL DEFAULT 'CREATE'");
+      }
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS pending_anggota_keluarga (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          no_kk TEXT,
+          nik TEXT,
+          action TEXT NOT NULL DEFAULT 'CREATE',
+          json_data TEXT NOT NULL,
+          synced INTEGER DEFAULT 0,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          next_retry_at TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
+  }
+
+  /// Daftar tabel antrian pending yang memakai mekanisme retry dengan backoff.
+  static const List<String> _pendingTables = [
+    'pending_penduduk',
+    'pending_keluarga',
+    'pending_catatan',
+    'pending_dasawisma',
+    'pending_anggota_keluarga',
+  ];
 
   Future<void> _createTables(Database db, int version) async {
     await db.execute('''
@@ -71,6 +129,9 @@ class LocalDatabase {
         json_data TEXT NOT NULL,
         action TEXT NOT NULL DEFAULT 'CREATE',
         synced INTEGER DEFAULT 0,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        next_retry_at TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -82,6 +143,9 @@ class LocalDatabase {
         json_data TEXT NOT NULL,
         action TEXT NOT NULL DEFAULT 'CREATE',
         synced INTEGER DEFAULT 0,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        next_retry_at TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -108,6 +172,9 @@ class LocalDatabase {
         json_data TEXT NOT NULL,
         action TEXT NOT NULL DEFAULT 'CREATE',
         synced INTEGER DEFAULT 0,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        next_retry_at TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -124,8 +191,27 @@ class LocalDatabase {
       CREATE TABLE IF NOT EXISTS pending_dasawisma (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipe TEXT NOT NULL,
+        action TEXT NOT NULL DEFAULT 'CREATE',
         json_data TEXT NOT NULL,
         synced INTEGER DEFAULT 0,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        next_retry_at TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pending_anggota_keluarga (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        no_kk TEXT,
+        nik TEXT,
+        action TEXT NOT NULL DEFAULT 'CREATE',
+        json_data TEXT NOT NULL,
+        synced INTEGER DEFAULT 0,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        next_retry_at TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -138,14 +224,6 @@ class LocalDatabase {
         deskripsi TEXT NOT NULL,
         detail TEXT,
         created_at TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS cached_weather (
-        location_key TEXT PRIMARY KEY,
-        json_data TEXT NOT NULL,
-        cached_at TEXT NOT NULL
       )
     ''');
   }
@@ -193,28 +271,38 @@ class LocalDatabase {
 
   Future<void> cachePendudukList(List<Map<String, dynamic>> items) async {
     final db = await database;
-    await db.delete('cached_penduduk');
+    // Gabungkan per NIK (bukan hapus-total) agar cache menumpuk seluruh
+    // halaman yang pernah diunduh — offline tetap bisa melihat data lengkap.
     final batch = db.batch();
     for (final item in items) {
-      batch.insert('cached_penduduk', {
-        'nik': item['nik'] ?? '',
-        'json_data': jsonEncode(item),
-        'cached_at': DateTime.now().toIso8601String(),
-      });
+      batch.insert(
+        'cached_penduduk',
+        {
+          'nik': item['nik'] ?? '',
+          'json_data': jsonEncode(item),
+          'cached_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
     await batch.commit(noResult: true);
   }
 
   Future<void> cacheKeluargaList(List<Map<String, dynamic>> items) async {
     final db = await database;
-    await db.delete('cached_keluarga');
+    // Gabungkan per No. KK agar cache menumpuk seluruh halaman yang pernah
+    // diunduh — offline tetap bisa melihat data lengkap.
     final batch = db.batch();
     for (final item in items) {
-      batch.insert('cached_keluarga', {
-        'no_kk': item['no_kk'] ?? '',
-        'json_data': jsonEncode(item),
-        'cached_at': DateTime.now().toIso8601String(),
-      });
+      batch.insert(
+        'cached_keluarga',
+        {
+          'no_kk': item['no_kk'] ?? '',
+          'json_data': jsonEncode(item),
+          'cached_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
     await batch.commit(noResult: true);
   }
@@ -242,11 +330,49 @@ class LocalDatabase {
     return results;
   }
 
-  Future<int> savePendingCatatan(Map<String, dynamic> data) async {
+  /// Simpan data catatan ke antrian pending. [action] membedakan CREATE
+  /// (POST baru) atau UPDATE (PUT ke detail berdasarkan id catatan).
+  ///
+  /// Jika id yang sama sudah punya baris pending, baris itu diperbarui
+  /// (action tetap CREATE bila awalnya CREATE — dikirim sekali, data final).
+  Future<int> savePendingCatatan(Map<String, dynamic> data, {String action = 'CREATE'}) async {
     final db = await database;
+    final id = data['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      final existing = await _findUnsyncedByJson('pending_catatan', {'id': id});
+      if (existing != null) {
+        final keepAction = existing['action'] == 'DELETE' ? action : existing['action'];
+        await db.update(
+          'pending_catatan',
+          {'json_data': jsonEncode(data), 'action': keepAction},
+          where: 'id = ?',
+          whereArgs: [existing['id']],
+        );
+        return existing['id'] as int;
+      }
+    }
     return await db.insert('pending_catatan', {
       'json_data': jsonEncode(data),
-      'action': 'CREATE',
+      'action': action,
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Antrikan penghapusan catatan (DELETE) untuk disinkronkan nanti.
+  ///
+  /// Jika masih ada baris pending untuk id yang sama, baris itu cukup
+  /// dihapus (batal) — tidak ada yang perlu dikirim ke server.
+  Future<void> queuePendingDeleteCatatan(int id) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson('pending_catatan', {'id': id.toString()});
+    if (existing != null) {
+      await db.delete('pending_catatan', where: 'id = ?', whereArgs: [existing['id']]);
+      return;
+    }
+    await db.insert('pending_catatan', {
+      'json_data': jsonEncode({'id': id}),
+      'action': 'DELETE',
       'synced': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
@@ -285,11 +411,84 @@ class LocalDatabase {
     return results;
   }
 
-  Future<void> savePendingDasawisma(Map<String, dynamic> data, String tipe) async {
+  /// Simpan data dasawisma ke antrian pending. [action] membedakan CREATE
+  /// (POST baru), UPDATE (PUT ke detail), atau DELETE (hapus di server).
+  ///
+  /// Kunci penggabungan: kelompok → `id`, kesehatan → `no_kk`. Jika entitas
+  /// yang sama sudah punya baris pending, baris itu diperbarui (action tetap
+  /// CREATE bila awalnya CREATE — dikirim sekali, data final).
+  Future<void> savePendingDasawisma(Map<String, dynamic> data, String tipe,
+      {String action = 'CREATE'}) async {
     final db = await database;
+    final keys = tipe == 'kelompok'
+        ? {'id': data['id']?.toString()}
+        : {'no_kk': data['no_kk']?.toString()};
+    if (keys.values.every((v) => v != null && v.isNotEmpty)) {
+      final existing = await _findUnsyncedByJson('pending_dasawisma', keys, tipe: tipe);
+      if (existing != null) {
+        final keepAction = existing['action'] == 'DELETE' ? action : existing['action'];
+        await db.update(
+          'pending_dasawisma',
+          {'json_data': jsonEncode(data), 'action': keepAction},
+          where: 'id = ?',
+          whereArgs: [existing['id']],
+        );
+        return;
+      }
+    }
     await db.insert('pending_dasawisma', {
       'tipe': tipe,
+      'action': action,
       'json_data': jsonEncode(data),
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Antrikan penghapusan kelompok dasawisma (DELETE) untuk disinkronkan nanti.
+  ///
+  /// Jika masih ada baris pending untuk id yang sama, baris itu cukup
+  /// dihapus (batal) — tidak ada yang perlu dikirim ke server.
+  Future<void> queuePendingDeleteDasawismaKelompok(int id) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson(
+      'pending_dasawisma',
+      {'id': id.toString()},
+      tipe: 'kelompok',
+    );
+    if (existing != null) {
+      await db.delete('pending_dasawisma', where: 'id = ?', whereArgs: [existing['id']]);
+      return;
+    }
+    await db.insert('pending_dasawisma', {
+      'tipe': 'kelompok',
+      'action': 'DELETE',
+      'json_data': jsonEncode({'id': id}),
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Antrikan penghapusan data kesehatan keluarga dasawisma (DELETE) untuk
+  /// disinkronkan nanti.
+  ///
+  /// Jika masih ada baris pending untuk no_kk yang sama, baris itu cukup
+  /// dihapus (batal) — tidak ada yang perlu dikirim ke server.
+  Future<void> queuePendingDeleteDasawismaKeluarga(String noKk) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson(
+      'pending_dasawisma',
+      {'no_kk': noKk},
+      tipe: 'kesehatan',
+    );
+    if (existing != null) {
+      await db.delete('pending_dasawisma', where: 'id = ?', whereArgs: [existing['id']]);
+      return;
+    }
+    await db.insert('pending_dasawisma', {
+      'tipe': 'kesehatan',
+      'action': 'DELETE',
+      'json_data': jsonEncode({'no_kk': noKk}),
       'synced': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
@@ -300,9 +499,188 @@ class LocalDatabase {
     return await db.query('pending_dasawisma', where: 'synced = ?', whereArgs: [0]);
   }
 
+  /// Breakdown pending dasawisma per tipe (kelompok / kesehatan keluarga).
+  Future<Map<String, int>> getPendingDasawismaByType() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT tipe, COUNT(*) as cnt FROM pending_dasawisma WHERE synced = 0 GROUP BY tipe',
+    );
+    final stats = <String, int>{};
+    for (final row in result) {
+      final tipe = row['tipe'] as String? ?? 'lainnya';
+      stats[tipe] = int.tryParse(row['cnt'].toString()) ?? 0;
+    }
+    return stats;
+  }
+
   Future<void> markDasawismaSynced(int id) async {
     final db = await database;
     await db.update('pending_dasawisma', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ============ ANGGOTA KELUARGA (PENDING) ============
+
+  /// Simpan penambahan anggota keluarga ke antrian pending (action CREATE).
+  ///
+  /// Jika no_kk+nik yang sama sudah punya baris pending, baris itu diperbarui
+  /// dengan data terbaru (dikirim sekali, data final).
+  Future<int> savePendingAnggotaKeluarga(Map<String, dynamic> data) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson('pending_anggota_keluarga', {
+      'no_kk': data['no_kk']?.toString(),
+      'nik': data['nik']?.toString(),
+    });
+    if (existing != null) {
+      await db.update(
+        'pending_anggota_keluarga',
+        {'json_data': jsonEncode(data)},
+        where: 'id = ?',
+        whereArgs: [existing['id']],
+      );
+      return existing['id'] as int;
+    }
+    return await db.insert('pending_anggota_keluarga', {
+      'no_kk': data['no_kk'],
+      'nik': data['nik'],
+      'json_data': jsonEncode(data),
+      'action': 'CREATE',
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Antrikan penghapusan anggota keluarga (DELETE) untuk disinkronkan nanti.
+  ///
+  /// Jika masih ada baris pending untuk no_kk+nik yang sama, baris itu cukup
+  /// dihapus (batal) — tidak ada yang perlu dikirim ke server.
+  Future<void> queuePendingDeleteAnggotaKeluarga(String noKk, String nik) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson('pending_anggota_keluarga', {
+      'no_kk': noKk,
+      'nik': nik,
+    });
+    if (existing != null) {
+      await db.delete('pending_anggota_keluarga', where: 'id = ?', whereArgs: [existing['id']]);
+      return;
+    }
+    await db.insert('pending_anggota_keluarga', {
+      'no_kk': noKk,
+      'nik': nik,
+      'json_data': jsonEncode({'no_kk': noKk, 'nik': nik}),
+      'action': 'DELETE',
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getUnsyncedAnggotaKeluarga() async {
+    final db = await database;
+    return await db.query('pending_anggota_keluarga', where: 'synced = ?', whereArgs: [0]);
+  }
+
+  Future<void> markAnggotaKeluargaSynced(int id) async {
+    final db = await database;
+    await db.update('pending_anggota_keluarga', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ============ RETRY DENGAN BACKOFF ============
+
+  /// Backoff eksponensial: 1 menit, 2 menit, 4 menit, ... maksimal 30 menit.
+  Duration _backoffFor(int retryCount) {
+    final minutes = 1 << retryCount.clamp(0, 5); // 1,2,4,8,16,32 -> cap 30
+    return Duration(minutes: minutes.clamp(1, 30));
+  }
+
+  /// Catat kegagalan pengiriman untuk item pending: naikkan retry_count,
+  /// simpan pesan error terakhir, dan jadwalkan percobaan berikutnya (backoff).
+  Future<void> markPendingFailed(String table, int id, String error) async {
+    final db = await database;
+    final rows = await db.query(table, columns: ['retry_count'], where: 'id = ?', whereArgs: [id]);
+    final current = rows.isNotEmpty ? (rows.first['retry_count'] as int? ?? 0) : 0;
+    final next = current + 1;
+    final nextRetryAt = DateTime.now().add(_backoffFor(next)).toIso8601String();
+    await db.update(
+      table,
+      {
+        'retry_count': next,
+        'last_error': error,
+        'next_retry_at': nextRetryAt,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Ambil item pending yang BELUM synced dan SUDAH siap dicoba (masa backoff
+  /// sudah lewat). Item dengan next_retry_at NULL (belum pernah gagal) selalu siap.
+  Future<List<Map<String, dynamic>>> getPendingReady(String table) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    return await db.query(
+      table,
+      where: 'synced = ? AND (next_retry_at IS NULL OR next_retry_at <= ?)',
+      whereArgs: [0, now],
+    );
+  }
+
+  /// Total item pending yang siap dicoba ulang di semua tabel antrian.
+  Future<int> getPendingReadyCount() async {
+    final db = await database;
+    int total = 0;
+    final now = DateTime.now().toIso8601String();
+    for (final table in _pendingTables) {
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) as cnt FROM $table WHERE synced = 0 AND (next_retry_at IS NULL OR next_retry_at <= ?)',
+        [now],
+      );
+      total += Sqflite.firstIntValue(result) ?? 0;
+    }
+    return total;
+  }
+
+  /// Total item pending yang sedang dalam masa backoff (menunggu retry).
+  Future<int> getPendingBackoffCount() async {
+    final db = await database;
+    int total = 0;
+    final now = DateTime.now().toIso8601String();
+    for (final table in _pendingTables) {
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) as cnt FROM $table WHERE synced = 0 AND next_retry_at IS NOT NULL AND next_retry_at > ?',
+        [now],
+      );
+      total += Sqflite.firstIntValue(result) ?? 0;
+    }
+    return total;
+  }
+
+  /// Hapus item pending yang sudah terkirim (synced=1) dan berusia lebih dari
+  /// [maxAge] — mencegah database offline membengkak karena baris synced lama
+  /// tidak pernah dibersihkan. Mengembalikan jumlah baris yang dihapus.
+  ///
+  /// Item yang BELUM terkirim (synced=0) TIDAK pernah dihapus.
+  Future<int> cleanupOldSynced({Duration maxAge = const Duration(days: 30)}) async {
+    final db = await database;
+    final cutoff = DateTime.now().subtract(maxAge).toIso8601String();
+    int total = 0;
+
+    for (final table in _pendingTables) {
+      final deleted = await db.delete(
+        table,
+        where: 'synced = ? AND created_at <= ?',
+        whereArgs: [1, cutoff],
+      );
+      total += deleted;
+    }
+
+    // Antrian legacy sync_queue (status DONE) juga dibersihkan agar tidak
+    // membengkak. Item berstatus PENDING tidak disentuh.
+    final queueDeleted = await db.delete(
+      'sync_queue',
+      where: 'status = ? AND created_at <= ?',
+      whereArgs: ['DONE', cutoff],
+    );
+
+    return total + queueDeleted;
   }
 
   // ============ PENDING (offline CRUD) ============
@@ -323,13 +701,80 @@ class LocalDatabase {
     return results.first;
   }
 
-  Future<int> savePendingPenduduk(Map<String, dynamic> data) async {
+  /// Cari baris pending yang belum tersinkron pada [table] yang json_data-nya
+  /// cocok dengan semua pasangan key [keys] (mis. `{'nik': nik}`). Opsional
+  /// [tipe] khusus tabel pending_dasawisma (kelompok / kesehatan).
+  Future<Map<String, dynamic>?> _findUnsyncedByJson(
+    String table,
+    Map<String, Object?> keys, {
+    String? tipe,
+  }) async {
     final db = await database;
+    final rows = await db.query(
+      table,
+      where: 'synced = ?${tipe != null ? ' AND tipe = ?' : ''}',
+      whereArgs: tipe != null ? [0, tipe] : [0],
+    );
+    for (final row in rows) {
+      final json = jsonDecode(row['json_data'] as String? ?? '{}') as Map<String, dynamic>;
+      var match = true;
+      for (final entry in keys.entries) {
+        if (json[entry.key]?.toString() != entry.value?.toString()) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return row;
+    }
+    return null;
+  }
+
+  /// Simpan data penduduk ke antrian pending. [action] membedakan CREATE
+  /// (POST baru) atau UPDATE (PUT ke detail berdasarkan NIK).
+  ///
+  /// Jika NIK yang sama sudah punya baris pending (belum tersinkron), baris
+  /// itu diperbarui dengan data terbaru — action tetap CREATE bila awalnya
+  /// CREATE agar dikirim sekali sebagai data final.
+  Future<int> savePendingPenduduk(Map<String, dynamic> data, {String action = 'CREATE'}) async {
+    final db = await database;
+    final nik = data['nik']?.toString() ?? '';
+    final existing = await _findUnsyncedByJson('pending_penduduk', {'nik': nik});
+    if (existing != null) {
+      final keepAction = existing['action'] == 'DELETE' ? action : existing['action'];
+      await db.update(
+        'pending_penduduk',
+        {'json_data': jsonEncode(data), 'action': keepAction},
+        where: 'id = ?',
+        whereArgs: [existing['id']],
+      );
+      return existing['id'] as int;
+    }
     return await db.insert('pending_penduduk', {
       'nik': data['nik'],
       'nama': data['nama'],
       'json_data': jsonEncode(data),
-      'action': 'CREATE',
+      'action': action,
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Antrikan penghapusan penduduk (DELETE) untuk disinkronkan nanti.
+  ///
+  /// Jika masih ada baris pending untuk NIK yang sama, baris itu cukup
+  /// dihapus (batal) — tidak ada yang perlu dikirim ke server.
+  Future<void> queuePendingDeletePenduduk(String nik, String nama) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson('pending_penduduk', {'nik': nik});
+    if (existing != null) {
+      await db.delete('pending_penduduk', where: 'id = ?', whereArgs: [existing['id']]);
+      return;
+    }
+    await db.insert('pending_penduduk', {
+      'nik': nik,
+      'nama': nama,
+      'json_data': jsonEncode({'nik': nik, 'nama': nama}),
+      'action': 'DELETE',
       'synced': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
@@ -345,12 +790,49 @@ class LocalDatabase {
     await db.update('pending_penduduk', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<int> savePendingKeluarga(Map<String, dynamic> data) async {
+  /// Simpan data keluarga ke antrian pending. [action] membedakan CREATE
+  /// (POST baru) atau UPDATE (PUT ke detail berdasarkan No. KK).
+  ///
+  /// Jika No. KK yang sama sudah punya baris pending, baris itu diperbarui
+  /// (action tetap CREATE bila awalnya CREATE — dikirim sekali, data final).
+  Future<int> savePendingKeluarga(Map<String, dynamic> data, {String action = 'CREATE'}) async {
     final db = await database;
+    final noKk = data['no_kk']?.toString() ?? '';
+    final existing = await _findUnsyncedByJson('pending_keluarga', {'no_kk': noKk});
+    if (existing != null) {
+      final keepAction = existing['action'] == 'DELETE' ? action : existing['action'];
+      await db.update(
+        'pending_keluarga',
+        {'json_data': jsonEncode(data), 'action': keepAction},
+        where: 'id = ?',
+        whereArgs: [existing['id']],
+      );
+      return existing['id'] as int;
+    }
     return await db.insert('pending_keluarga', {
       'no_kk': data['no_kk'],
       'json_data': jsonEncode(data),
-      'action': 'CREATE',
+      'action': action,
+      'synced': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Antrikan penghapusan keluarga (DELETE) untuk disinkronkan nanti.
+  ///
+  /// Jika masih ada baris pending untuk No. KK yang sama, baris itu cukup
+  /// dihapus (batal) — tidak ada yang perlu dikirim ke server.
+  Future<void> queuePendingDeleteKeluarga(String noKk) async {
+    final db = await database;
+    final existing = await _findUnsyncedByJson('pending_keluarga', {'no_kk': noKk});
+    if (existing != null) {
+      await db.delete('pending_keluarga', where: 'id = ?', whereArgs: [existing['id']]);
+      return;
+    }
+    await db.insert('pending_keluarga', {
+      'no_kk': noKk,
+      'json_data': jsonEncode({'no_kk': noKk}),
+      'action': 'DELETE',
       'synced': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
@@ -364,6 +846,43 @@ class LocalDatabase {
   Future<void> markKeluargaSynced(int id) async {
     final db = await database;
     await db.update('pending_keluarga', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ============ STATISTIK DATABASE ============
+
+  /// Key SharedPreferences untuk penanda waktu pembersihan otomatis terakhir.
+  static const lastCleanupAtKey = 'last_cleanup_at';
+
+  /// Key SharedPreferences untuk jumlah item yang dihapus pada pembersihan
+  /// otomatis terakhir.
+  static const lastCleanupDeletedKey = 'last_cleanup_deleted';
+
+  /// Total ukuran file database offline (db + wal + shm) dalam byte.
+  /// Dipakai untuk statistik penyimpanan di halaman admin.
+  Future<int> getDatabaseSizeBytes() async {
+    try {
+      final dbPath = await getDatabasesPath();
+      final base = join(dbPath, 'sieda_offline.db');
+      int total = 0;
+      for (final suffix in ['', '-wal', '-shm']) {
+        final file = File(base + suffix);
+        if (await file.exists()) {
+          total += await file.length();
+        }
+      }
+      return total;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Statistik pembersihan otomatis terakhir: jumlah item yang dihapus dan
+  /// kapan terakhir kali berjalan (disimpan oleh main() ke SharedPreferences).
+  Future<({int deleted, String? at})> getLastCleanupStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final deleted = prefs.getInt(lastCleanupDeletedKey) ?? 0;
+    final at = prefs.getString(lastCleanupAtKey);
+    return (deleted: deleted, at: at);
   }
 
   // ============ ADMIN / MAINTENANCE ============
@@ -388,6 +907,7 @@ class LocalDatabase {
       'pending_keluarga': 'Keluarga',
       'pending_catatan': 'Catatan',
       'pending_dasawisma': 'Dasawisma',
+      'pending_anggota_keluarga': 'Anggota',
     };
     final stats = <String, int>{};
     for (final entry in tables.entries) {
@@ -653,32 +1173,10 @@ class LocalDatabase {
     return await db.query('cached_penduduk');
   }
 
-  // ============ WEATHER CACHE ============
-
-  /// Cache weather data for a location.
-  Future<void> cacheWeather(Map<String, dynamic> data, String locationKey) async {
+  /// Get all cached keluarga entries (raw).
+  Future<List<Map<String, dynamic>>> getCachedKeluargaList() async {
     final db = await database;
-    await db.insert(
-      'cached_weather',
-      {
-        'location_key': locationKey,
-        'json_data': jsonEncode(data),
-        'cached_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  /// Get cached weather data for a location.
-  Future<Map<String, dynamic>?> getCachedWeather(String locationKey) async {
-    final db = await database;
-    final results = await db.query(
-      'cached_weather',
-      where: 'location_key = ?',
-      whereArgs: [locationKey],
-    );
-    if (results.isEmpty) return null;
-    return results.first;
+    return await db.query('cached_keluarga');
   }
 }
 

@@ -55,6 +55,10 @@ class CatatanKelahiranKematianModel {
   final String? namaKelompok;
   final String? namaDusun;
 
+  /// true bila record ini berasal dari antrian offline (belum tersinkron
+  /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
+  final bool isPendingSync;
+
   CatatanKelahiranKematianModel({
     required this.id,
     this.idWargaIbu,
@@ -85,9 +89,13 @@ class CatatanKelahiranKematianModel {
     this.nikSuami,
     this.namaKelompok,
     this.namaDusun,
+    this.isPendingSync = false,
   });
 
-  factory CatatanKelahiranKematianModel.fromJson(Map<String, dynamic> json) {
+  factory CatatanKelahiranKematianModel.fromJson(
+    Map<String, dynamic> json, {
+    bool isPendingSync = false,
+  }) {
     // Extract nested relations
     String? extractName(dynamic val) {
       if (val is Map) return val['nama']?.toString();
@@ -157,6 +165,7 @@ class CatatanKelahiranKematianModel {
       nikSuami: nikSuami,
       namaKelompok: namaKelompok,
       namaDusun: namaDusun,
+      isPendingSync: isPendingSync,
     );
   }
 

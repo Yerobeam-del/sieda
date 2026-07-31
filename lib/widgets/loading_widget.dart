@@ -25,7 +25,7 @@ class LoadingWidget extends StatelessWidget {
             Text(
               message!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.textSecondaryOf(context),
                   ),
             ),
           ],
@@ -64,11 +64,12 @@ class ShimmerList extends StatelessWidget {
   }
 
   Widget _buildShimmerBar(BuildContext context, double widthFraction, double height) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: MediaQuery.of(context).size.width * widthFraction,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(6),
       ),
     );
@@ -112,13 +113,14 @@ class SkeletonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.border.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.borderOf(context).withValues(alpha: 0.3)),
       ),
       child: Center(
         child: SizedBox(
@@ -126,7 +128,7 @@ class SkeletonCard extends StatelessWidget {
           height: 24,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: AppTheme.primary.withOpacity(0.3),
+            color: AppTheme.primary.withValues(alpha: 0.3),
           ),
         ),
       ),
@@ -164,6 +166,8 @@ class _ShimmerCardState extends State<_ShimmerCard>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final base = cs.surfaceContainerHighest;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -171,12 +175,12 @@ class _ShimmerCardState extends State<_ShimmerCard>
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppTheme.border.withOpacity(0.4)),
+            border: Border.all(color: AppTheme.borderOf(context).withValues(alpha: 0.4)),
             gradient: LinearGradient(
-              colors: const [
-                Color(0xFFF8FAFC),
-                Color(0xFFF1F5F9),
-                Color(0xFFF8FAFC),
+              colors: [
+                base.withValues(alpha: 0.45),
+                base.withValues(alpha: 0.75),
+                base.withValues(alpha: 0.45),
               ],
               stops: const [0.0, 0.5, 1.0],
               begin: Alignment(-1.0 + (_controller.value * 2), 0),

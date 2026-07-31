@@ -7,8 +7,8 @@ import '../../models/penduduk_model.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
+import '../../widgets/pending_sync_badge.dart';
 import 'penduduk_detail_screen.dart';
-import 'forms/penduduk_form_screen.dart';
 
 class PendudukListScreen extends StatefulWidget {
   const PendudukListScreen({super.key});
@@ -17,13 +17,23 @@ class PendudukListScreen extends StatefulWidget {
   State<PendudukListScreen> createState() => _PendudukListScreenState();
 }
 
-class _PendudukListScreenState extends State<PendudukListScreen> {
+class _PendudukListScreenState extends State<PendudukListScreen>
+    with SingleTickerProviderStateMixin {
   final _searchController = TextEditingController();
   bool _showSearch = false;
+
+  /// Animates the header height in sync with the search field so the
+  /// expandedHeight never overflows its content while toggling.
+  late final AnimationController _headerAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+  );
 
   @override
   void initState() {
     super.initState();
+    // Rebuild so the clear (✕) button appears/disappears while typing.
+    _searchController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PendudukProvider>().loadPenduduk(refresh: true);
     });
@@ -32,86 +42,86 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _headerAnim.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<PendudukProvider>();
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            SlideTransitionRoute(page: const PendudukFormScreen()),
-          );
-          if (result == true) prov.loadPenduduk(refresh: true);
-        },
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.person_add_rounded, size: 20),
-        label: const Text('Tambah'),
-      ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: _showSearch ? 150 : 120,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: AppTheme.gradientHeader,
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Title row with search toggle
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Penduduk',
-                                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                      color: Colors.white,
-                                    ),
-                              ),
-                              if (prov.total > 0)
+          // Height = inset + top pad + title row + (search block when open) + bottom pad.
+          // AnimatedBuilder keeps the bar height in sync with the search field
+          // animation, so content never overflows the header bounds.
+          AnimatedBuilder(
+            animation: _headerAnim,
+            builder: (context, _) => SliverAppBar(
+              expandedHeight: topInset + 88 + _headerAnim.value * 72,
+              pinned: true,
+              automaticallyImplyLeading: false,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: AppTheme.gradientHeaderOf(context),
+                  padding: EdgeInsets.fromLTRB(20, topInset + 24, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Title row with search toggle
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 Text(
-                                  '${prov.total} jiwa',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: Colors.white.withOpacity(0.85),
+                                  'Penduduk',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                        color: Colors.white,
                                       ),
                                 ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              _showSearch ? Icons.close_rounded : Icons.search_rounded,
-                              key: ValueKey(_showSearch),
-                              color: Colors.white,
+                                if (prov.total > 0)
+                                  Text(
+                                    '${prov.total} jiwa',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Colors.white.withValues(alpha: 0.85),
+                                        ),
+                                  ),
+                              ],
                             ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _showSearch = !_showSearch;
-                              if (!_showSearch) {
-                                _searchController.clear();
-                                prov.setSearch('');
-                              }
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                          IconButton(
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                _showSearch ? Icons.close_rounded : Icons.search_rounded,
+                                key: ValueKey(_showSearch),
+                                color: Colors.white,
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showSearch = !_showSearch;
+                                _showSearch ? _headerAnim.forward() : _headerAnim.reverse();
+                                if (!_showSearch) {
+                                  _searchController.clear();
+                                  prov.setSearch('');
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     // Search field - always visible when showSearch is true
                     AnimatedSize(
                       duration: const Duration(milliseconds: 250),
@@ -121,10 +131,10 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
                               padding: const EdgeInsets.only(top: 10, bottom: 14),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     width: 1,
                                   ),
                                 ),
@@ -134,12 +144,12 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
                                   onChanged: (v) => prov.setSearch(v),
                                   decoration: InputDecoration(
                                     hintText: 'Cari NIK atau nama...',
-                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                                     border: InputBorder.none,
-                                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7)),
+                                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7)),
                                     suffixIcon: _searchController.text.isNotEmpty
                                         ? IconButton(
-                                            icon: Icon(Icons.clear_rounded, color: Colors.white.withOpacity(0.7), size: 18),
+                                            icon: Icon(Icons.clear_rounded, color: Colors.white.withValues(alpha: 0.7), size: 18),
                                             onPressed: () {
                                               _searchController.clear();
                                               prov.setSearch('');
@@ -159,45 +169,71 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
               ),
             ),
           ),
+          ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (prov.isLoading && prov.pendudukList.isEmpty)
-                  const SizedBox(height: 200, child: LoadingWidget())
-                else if (prov.error != null)
-                  ErrorDisplay(
-                    error: prov.error,
-                    onRetry: () => prov.loadPenduduk(refresh: true),
-                  )
-                else if (prov.pendudukList.isEmpty)
-                  const EmptyState(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Belum ada data penduduk',
-                  )
-                else
-                  ...prov.pendudukList.asMap().entries.map((entry) => StaggeredListAnimation(
-                    index: entry.key,
-                    child: _pendudukCard(context, entry.value),
-                  )),
-
-                if (prov.isLoadingMore)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-
-                if (prov.hasMore && !prov.isLoadingMore)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Center(
-                      child: TextButton(
-                        onPressed: () => prov.loadMore(),
-                        child: const Text('Muat lebih banyak...'),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (prov.pendudukList.isEmpty) {
+                    if (index == 0) {
+                      if (prov.isLoading) {
+                        return const SizedBox(height: 200, child: LoadingWidget());
+                      }
+                      if (prov.error != null) {
+                        return ErrorDisplay(
+                          error: prov.error,
+                          onRetry: () => prov.loadPenduduk(refresh: true),
+                        );
+                      }
+                      return const EmptyState(
+                        icon: Icons.people_outline_rounded,
+                        title: 'Belum ada data penduduk',
+                      );
+                    }
+                    return null;
+                  }
+                  if (index < prov.pendudukList.length) {
+                    return StaggeredListAnimation(
+                      index: index,
+                      child: _pendudukCard(context, prov.pendudukList[index]),
+                    );
+                  }
+                  // Footer: indikator muat-lagi / tombol muat lebih banyak /
+                  // tombol tampilkan seluruh list sekaligus.
+                  if (prov.isLoadingMore) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  }
+                  if (prov.hasMore) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        children: [
+                          TextButton(
+                            onPressed: () => prov.loadMore(),
+                            child: const Text('Muat lebih banyak...'),
+                          ),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => prov.loadAll(),
+                              icon: const Icon(Icons.unfold_more_rounded, size: 18),
+                              label: Text('Tampilkan Semua (${prov.total})'),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-              ]),
+                    );
+                  }
+                  return null;
+                },
+                childCount: prov.pendudukList.isEmpty
+                    ? 1
+                    : prov.pendudukList.length + (prov.isLoadingMore || prov.hasMore ? 1 : 0),
+              ),
             ),
           ),
         ],
@@ -228,7 +264,7 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: genderColor.withOpacity(0.15),
+              backgroundColor: genderColor.withValues(alpha: 0.15),
               child: Text(
                 Helpers.getInitials(p.nama),
                 style: TextStyle(
@@ -243,11 +279,26 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(p.nama, style: Theme.of(context).textTheme.titleMedium),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          p.nama,
+                          style: Theme.of(context).textTheme.titleMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (p.isPendingSync) ...[
+                        const SizedBox(width: 8),
+                        const PendingSyncBadge(),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.badge_outlined, size: 12, color: AppTheme.textHint),
+                      Icon(Icons.badge_outlined, size: 12, color: AppTheme.textHintOf(context)),
                       const SizedBox(width: 4),
                       Text(
                         p.nik,
@@ -268,7 +319,18 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _confirmDelete(context, p),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  color: AppTheme.error.withValues(alpha: 0.8),
+                  tooltip: 'Hapus penduduk',
+                ),
+                Icon(Icons.chevron_right_rounded, color: AppTheme.textHintOf(context)),
+              ],
+            ),
           ],
         ),
       ),
@@ -276,11 +338,52 @@ class _PendudukListScreenState extends State<PendudukListScreen> {
     );
   }
 
+  /// Konfirmasi hapus penduduk dari list. Online -> DELETE langsung;
+  /// offline -> diantrekan dan dihapus saat koneksi kembali.
+  void _confirmDelete(BuildContext context, PendudukModel p) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Penduduk'),
+        content: Text('Apakah Anda yakin ingin menghapus ${p.nama} (NIK ${p.nik})? Tindakan ini tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await context.read<PendudukProvider>().deletePenduduk(p);
+              if (!context.mounted) return;
+
+              if (!result.handled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Gagal menghapus penduduk.'), behavior: SnackBarBehavior.floating),
+                );
+                return;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result.queuedOffline
+                      ? 'Penduduk akan dihapus saat online.'
+                      : 'Penduduk berhasil dihapus.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _infoChip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),

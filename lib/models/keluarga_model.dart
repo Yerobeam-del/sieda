@@ -26,6 +26,10 @@ class KeluargaModel {
   final DasawismaKeluargaData? dasawismaKeluarga;
   final List<PendudukModel> anggota;
 
+  /// true bila record ini berasal dari antrian offline (belum tersinkron
+  /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
+  final bool isPendingSync;
+
   KeluargaModel({
     required this.noKk,
     this.idKepalaKeluarga,
@@ -36,9 +40,10 @@ class KeluargaModel {
     this.kelompokDasawisma,
     this.dasawismaKeluarga,
     this.anggota = const [],
+    this.isPendingSync = false,
   });
 
-  factory KeluargaModel.fromJson(Map<String, dynamic> json) {
+  factory KeluargaModel.fromJson(Map<String, dynamic> json, {bool isPendingSync = false}) {
     bool parseActive(dynamic val) {
       return val == 1 || val == true || val == '1';
     }
@@ -74,6 +79,7 @@ class KeluargaModel {
       kelompokDasawisma: parseKelompok(json['kelompok_dasawisma']),
       dasawismaKeluarga: parseDasawisma(json['dasawisma_keluarga']),
       anggota: _parseAnggota(json['anggota']),
+      isPendingSync: isPendingSync,
     );
   }
 

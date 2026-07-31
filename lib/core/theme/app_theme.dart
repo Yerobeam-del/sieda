@@ -10,10 +10,7 @@ class AppTheme {
   static const Color primary = Color(0xFF0D9488);
   static const Color primaryLight = Color(0xFF14B8A6);
   static const Color primaryDark = Color(0xFF0F766E);
-  static const Color secondary = Color(0xFFF59E0B);
   static const Color surface = Color(0xFFF0FDF4);
-  static const Color surfaceVariant = Color(0xFFF1F5F9);
-  static const Color card = Colors.white;
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF475569);
   static const Color textHint = Color(0xFF94A3B8);
@@ -23,17 +20,9 @@ class AppTheme {
   static const Color warning = Color(0xFFF59E0B);
   static const Color info = Color(0xFF3B82F6);
 
-  // Dark mode semantic colors
-  static const Color darkSurface = Color(0xFF0F172A);
-  static const Color darkCard = Color(0xFF1E293B);
-  static const Color darkTextPrimary = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
-  static const Color darkTextHint = Color(0xFF64748B);
-  static const Color darkBorder = Color(0xFF334155);
-  static const Color darkScaffold = Color(0xFF0B1120);
-  static const Color darkAppBar = Color(0xFF0F172A);
-  static const Color darkNavBar = Color(0xFF0F172A);
-  static const Color darkInputFill = Color(0xFF1E293B);
+  // Dark mode: gunakan skema standar Material 3 (ColorScheme.fromSeed).
+  // Tidak ada konstanta dark custom — semua warna diambil dari colorScheme
+  // saat runtime agar serasi dengan komponen standar Android (navbar, dll).
 
   // Gender colors (same in both modes)
   static const Color male = Color(0xFF3B82F6);
@@ -146,14 +135,15 @@ class AppTheme {
       error: error,
     );
 
-    final textTheme = _buildTextTheme(darkTextPrimary, darkTextSecondary, darkTextHint);
+    final textTheme = _buildTextTheme(
+        colorScheme.onSurface, colorScheme.onSurfaceVariant, colorScheme.outline);
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
-      scaffoldBackgroundColor: darkScaffold,
-      appBarTheme: _darkAppBarTheme(textTheme),
+      scaffoldBackgroundColor: colorScheme.surface,
+      appBarTheme: _darkAppBarTheme(colorScheme, textTheme),
       cardTheme: _darkCardTheme(colorScheme),
       inputDecorationTheme: _darkInputTheme(colorScheme),
       elevatedButtonTheme: _buttonTheme(colorScheme),
@@ -163,22 +153,22 @@ class AppTheme {
       navigationBarTheme: _darkNavBar(colorScheme),
       navigationRailTheme: _navRail(colorScheme),
       segmentedButtonTheme: _segmentedButtonTheme(),
-      bottomSheetTheme: _darkBottomSheet(),
-      dialogTheme: _darkDialog(),
+      bottomSheetTheme: _darkBottomSheet(colorScheme),
+      dialogTheme: _darkDialog(colorScheme),
       snackBarTheme: _snackBarTheme(),
       chipTheme: _chipTheme(colorScheme),
       checkboxTheme: _darkCheckbox(colorScheme),
       switchTheme: _darkSwitch(colorScheme),
-      dividerTheme: _darkDivider(),
+      dividerTheme: _darkDivider(colorScheme),
       listTileTheme: _listTile(),
       tabBarTheme: _tabBar(colorScheme),
       dropdownMenuTheme: _darkDropDown(colorScheme),
       menuButtonTheme: _menuButton(),
       progressIndicatorTheme: _progress(colorScheme),
-      popupMenuTheme: _darkPopupMenu(),
+      popupMenuTheme: _darkPopupMenu(colorScheme),
       tooltipTheme: _tooltip(),
       badgeTheme: _badge(),
-      scrollbarTheme: _darkScrollbar(),
+      scrollbarTheme: _darkScrollbar(colorScheme),
       pageTransitionsTheme: _pageTransitions(),
     );
   }
@@ -439,26 +429,26 @@ class AppTheme {
 
   // ── Dark-specific component themes ────────────────────────
 
-  static AppBarTheme _darkAppBarTheme(TextTheme tt) =>
+  static AppBarTheme _darkAppBarTheme(ColorScheme cs, TextTheme tt) =>
       AppBarTheme(
-        backgroundColor: darkAppBar,
-        foregroundColor: darkTextPrimary,
+        backgroundColor: cs.surfaceContainerLow,
+        foregroundColor: cs.onSurface,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         centerTitle: false,
         titleSpacing: 16,
-        titleTextStyle: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600, color: darkTextPrimary),
-        shape: Border(bottom: BorderSide(color: darkBorder, width: 1)),
+        titleTextStyle: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600, color: cs.onSurface),
+        shape: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6), width: 1)),
       );
 
   static CardThemeData _darkCardTheme(ColorScheme cs) =>
       CardThemeData(
-        color: darkCard,
+        color: cs.surfaceContainerLow,
         elevation: 0,
         margin: const EdgeInsets.only(bottom: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: darkBorder, width: 1),
+          side: BorderSide(color: cs.outlineVariant, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
       );
@@ -466,15 +456,15 @@ class AppTheme {
   static InputDecorationTheme _darkInputTheme(ColorScheme cs) =>
       InputDecorationTheme(
         filled: true,
-        fillColor: darkInputFill,
+        fillColor: cs.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: darkBorder),
+          borderSide: BorderSide(color: cs.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: darkBorder),
+          borderSide: BorderSide(color: cs.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -488,33 +478,35 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: cs.error, width: 2),
         ),
-        labelStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: darkTextSecondary),
-        hintStyle: GoogleFonts.inter(fontSize: 14, color: darkTextHint),
-        prefixIconColor: darkTextHint,
+        labelStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant),
+        prefixIconColor: cs.onSurfaceVariant,
         floatingLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary),
       );
 
   static NavigationBarThemeData _darkNavBar(ColorScheme cs) =>
       NavigationBarThemeData(
-        backgroundColor: darkNavBar,
-        indicatorColor: cs.primaryContainer,
+        backgroundColor: cs.surfaceContainer,
+        // Indikator dibuat transparan agar navbar seragam — status terpilih
+        // tetap terlihat dari warna ikon & label yang berbeda.
+        indicatorColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 2,
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         height: 68,
       );
 
-  static BottomSheetThemeData _darkBottomSheet() =>
+  static BottomSheetThemeData _darkBottomSheet(ColorScheme cs) =>
       BottomSheetThemeData(
-        backgroundColor: darkCard,
+        backgroundColor: cs.surfaceContainerLow,
         elevation: 2,
         modalElevation: 2,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       );
 
-  static DialogThemeData _darkDialog() =>
+  static DialogThemeData _darkDialog(ColorScheme cs) =>
       DialogThemeData(
-        backgroundColor: darkCard,
+        backgroundColor: cs.surfaceContainerHigh,
         elevation: 3,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       );
@@ -527,34 +519,34 @@ class AppTheme {
         }),
         checkColor: WidgetStateProperty.all(Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        side: BorderSide(color: darkBorder),
+        side: BorderSide(color: cs.outlineVariant),
       );
 
   static SwitchThemeData _darkSwitch(ColorScheme cs) =>
       SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return cs.primary;
-          return darkTextHint;
+          return cs.onSurfaceVariant;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return cs.primary.withValues(alpha: 0.4);
-          return darkBorder;
+          return cs.outlineVariant;
         }),
       );
 
-  static DividerThemeData _darkDivider() =>
-      DividerThemeData(color: darkBorder, thickness: 1, space: 1);
+  static DividerThemeData _darkDivider(ColorScheme cs) =>
+      DividerThemeData(color: cs.outlineVariant, thickness: 1, space: 1);
 
-  static PopupMenuThemeData _darkPopupMenu() =>
+  static PopupMenuThemeData _darkPopupMenu(ColorScheme cs) =>
       PopupMenuThemeData(
-        color: darkCard,
+        color: cs.surfaceContainer,
         elevation: 3,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       );
 
-  static ScrollbarThemeData _darkScrollbar() =>
+  static ScrollbarThemeData _darkScrollbar(ColorScheme cs) =>
       ScrollbarThemeData(
-        thumbColor: WidgetStateProperty.all(darkBorder),
+        thumbColor: WidgetStateProperty.all(cs.outlineVariant),
         radius: const Radius.circular(8),
         thickness: WidgetStateProperty.all(4),
       );
@@ -576,10 +568,10 @@ class AppTheme {
       DropdownMenuThemeData(
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: darkInputFill,
+          fillColor: cs.surfaceContainerHighest,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: darkBorder),
+            borderSide: BorderSide(color: cs.outlineVariant),
           ),
         ),
       );
@@ -588,11 +580,48 @@ class AppTheme {
   // NOTE: These use light-mode colors by default.
   // For dark-mode-aware widgets, prefer Theme.of(context).colorScheme or M3 Card widget.
 
-  static EdgeInsets get screenPadding =>
-      const EdgeInsets.symmetric(horizontal: 20, vertical: 8);
+  // ── Theme-mode-aware helpers ───────────────────────────────
+  // Use these in widgets so the same code renders correctly in
+  // both light and dark mode.
 
-  static EdgeInsets get cardPadding =>
-      const EdgeInsets.all(20);
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color textPrimaryOf(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.onSurface : textPrimary;
+
+  static Color textSecondaryOf(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.onSurfaceVariant : textSecondary;
+
+  static Color textHintOf(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.outline : textHint;
+
+  static Color borderOf(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.outlineVariant : border;
+
+  static Color surfaceOf(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.surface : surface;
+
+  static BoxDecoration cardDecorationOf(BuildContext context) {
+    if (!isDark(context)) return cardDecoration;
+    final cs = Theme.of(context).colorScheme;
+    return BoxDecoration(
+      color: cs.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(cardRadius),
+      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+    );
+  }
+
+  static BoxDecoration gradientHeaderOf(BuildContext context) => isDark(context)
+      ? const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF115E59), Color(0xFF0F766E), Color(0xFF0D9488)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            stops: [0.0, 0.5, 1.0],
+          ),
+        )
+      : gradientHeader;
 
   static double get cardRadius => 20;
 
@@ -600,12 +629,6 @@ class AppTheme {
         color: Colors.white,
         borderRadius: BorderRadius.circular(cardRadius),
         border: Border.all(color: border.withValues(alpha: 0.5)),
-      );
-
-  static BoxDecoration get darkCardDecoration => BoxDecoration(
-        color: darkCard,
-        borderRadius: BorderRadius.circular(cardRadius),
-        border: Border.all(color: darkBorder),
       );
 
   static BoxDecoration get gradientHeader => BoxDecoration(
@@ -617,24 +640,4 @@ class AppTheme {
         ),
       );
 
-  static BoxDecoration get subtleHeader => BoxDecoration(
-        gradient: LinearGradient(
-          colors: [primary.withValues(alpha: 0.04), primaryLight.withValues(alpha: 0.02)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      );
-
-  static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
-        ),
-      ];
-
-  static BoxDecoration get iconContainer => BoxDecoration(
-        color: primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      );
 }

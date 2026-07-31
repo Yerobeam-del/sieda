@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 // ── Shared Axis Transitions (M3 style) ──────────────────────
@@ -134,7 +136,11 @@ class StaggeredListAnimation extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 400) + (baseDelay * index),
+      // Delay berjenjang dibatasi (maks 480ms) agar item di tengah/bawah
+      // list tidak animasi terlalu lama — animasi panjang memaksa rebuild
+      // + repaint tiap frame saat di-scroll → terasa macet.
+      duration: const Duration(milliseconds: 400) +
+          Duration(milliseconds: math.min(baseDelay.inMilliseconds * index, 480)),
       curve: Curves.easeOutCubic,
       builder: (context, value, childWidget) {
         return Opacity(
@@ -260,10 +266,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.borderRadius),
             gradient: LinearGradient(
-              colors: const [
-                Color(0xFFF1F5F9),
-                Color(0xFFE2E8F0),
-                Color(0xFFF1F5F9),
+              colors: [
+                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.75),
+                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
               ],
               stops: const [0.0, 0.5, 1.0],
               begin: Alignment(-1.0 + (_controller.value * 2), 0),

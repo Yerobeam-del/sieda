@@ -207,7 +207,10 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
     );
 
     if (save == true) {
-      await LocalDatabase().savePendingCatatan(data);
+      // Sertakan id catatan agar saat sinkron mode edit memakai PUT ke detail
+      // (bukan CREATE) — mencegah duplikat catatan di server.
+      if (_isEditing) data['id'] = widget.catatan!.id;
+      await LocalDatabase().savePendingCatatan(data, action: _isEditing ? 'UPDATE' : 'CREATE');
       ActivityService().logSave(
         tipe: 'Catatan',
         nama: data['id_warga_ibu'] ?? '',
@@ -244,7 +247,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.warning.withOpacity(0.2),
+                color: AppTheme.warning.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
@@ -310,7 +313,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               _sectionHeader('Status Kehamilan / Ibu', Icons.health_and_safety_rounded, AppTheme.female),
               const SizedBox(height: 12),
 
-              Text('Status Ibu *', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('Status Ibu *', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -341,7 +344,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               const SizedBox(height: 12),
               Text(
                 'Isi jika ibu sudah melahirkan atau ada data bayi.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHint),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHintOf(context)),
               ),
               const SizedBox(height: 8),
 
@@ -356,7 +359,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               ),
               const SizedBox(height: 12),
 
-              Text('Jenis Kelamin Bayi', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('Jenis Kelamin Bayi', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -370,13 +373,13 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               _dateField(_tanggalLahirBayiController, 'Tanggal Lahir Bayi', _tanggalLahirBayi, (d) => _tanggalLahirBayi = d),
               const SizedBox(height: 12),
 
-              Text('Akte Kelahiran', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('Akte Kelahiran', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
               const SizedBox(height: 8),
               Row(
                 children: [
                   _toggleChip('Ada', _akteKelahiran == 'Ada', AppTheme.success, () => setState(() => _akteKelahiran = 'Ada')),
                   const SizedBox(width: 8),
-                  _toggleChip('Tidak', _akteKelahiran == 'Tidak', AppTheme.textHint, () => setState(() => _akteKelahiran = 'Tidak')),
+                  _toggleChip('Tidak', _akteKelahiran == 'Tidak', AppTheme.textHintOf(context), () => setState(() => _akteKelahiran = 'Tidak')),
                 ],
               ),
               if (_akteKelahiran == 'Ada') ...[
@@ -396,11 +399,11 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               const SizedBox(height: 12),
               Text(
                 'Isi jika ada kematian ibu, bayi, atau balita.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHint),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textHintOf(context)),
               ),
               const SizedBox(height: 8),
 
-              Text('Status Kematian', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('Status Kematian', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -424,7 +427,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                Text('Jenis Kelamin', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondary)),
+                Text('Jenis Kelamin', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 13, color: AppTheme.textSecondaryOf(context))),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -451,7 +454,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               const SizedBox(height: 20),
 
               // ============ KETERANGAN ============
-              _sectionHeader('Keterangan', Icons.notes_rounded, AppTheme.textHint),
+              _sectionHeader('Keterangan', Icons.notes_rounded, AppTheme.textHintOf(context)),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _keteranganController,
@@ -494,7 +497,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
           child: Icon(icon, size: 16, color: color),
         ),
         const SizedBox(width: 8),
@@ -511,16 +514,16 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.12) : Colors.white,
+          color: selected ? color.withValues(alpha: 0.12) : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? color : AppTheme.border, width: selected ? 1.5 : 1),
+          border: Border.all(color: selected ? color : AppTheme.borderOf(context), width: selected ? 1.5 : 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: selected ? color : AppTheme.textHint),
+            Icon(icon, size: 16, color: selected ? color : AppTheme.textHintOf(context)),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, color: selected ? color : AppTheme.textPrimary)),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, color: selected ? color : AppTheme.textPrimaryOf(context))),
           ],
         ),
       ),
@@ -529,7 +532,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
 
   Widget _monthPicker(String label, int? currentValue, ValueChanged<int> onChanged) {
     return DropdownButtonFormField<int>(
-      value: currentValue != null && currentValue >= 1 && currentValue <= 12 ? currentValue : null,
+      initialValue: currentValue != null && currentValue >= 1 && currentValue <= 12 ? currentValue : null,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: const Icon(Icons.calendar_month_outlined),
@@ -575,16 +578,16 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.1) : Colors.white,
+          color: selected ? color.withValues(alpha: 0.1) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? color : AppTheme.border, width: selected ? 2 : 1),
+          border: Border.all(color: selected ? color : AppTheme.borderOf(context), width: selected ? 2 : 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: selected ? color : AppTheme.textHint),
+            Icon(icon, size: 18, color: selected ? color : AppTheme.textHintOf(context)),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, color: selected ? color : AppTheme.textPrimary)),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, color: selected ? color : AppTheme.textPrimaryOf(context))),
           ],
         ),
       ),
@@ -598,13 +601,13 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+          color: selected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: selected ? color : Colors.transparent, width: 1.5),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, color: selected ? color : AppTheme.textHint),
+          style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal, color: selected ? color : AppTheme.textHintOf(context)),
         ),
       ),
     );

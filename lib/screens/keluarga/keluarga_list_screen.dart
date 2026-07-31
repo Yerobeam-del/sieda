@@ -6,8 +6,8 @@ import '../../models/keluarga_model.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
+import '../../widgets/pending_sync_badge.dart';
 import 'keluarga_detail_screen.dart';
-import 'forms/keluarga_form_screen.dart';
 
 class KeluargaListScreen extends StatefulWidget {
   const KeluargaListScreen({super.key});
@@ -16,13 +16,23 @@ class KeluargaListScreen extends StatefulWidget {
   State<KeluargaListScreen> createState() => _KeluargaListScreenState();
 }
 
-class _KeluargaListScreenState extends State<KeluargaListScreen> {
+class _KeluargaListScreenState extends State<KeluargaListScreen>
+    with SingleTickerProviderStateMixin {
   final _searchController = TextEditingController();
   bool _showSearch = false;
+
+  /// Animates the header height in sync with the search field so the
+  /// expandedHeight never overflows its content while toggling.
+  late final AnimationController _headerAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+  );
 
   @override
   void initState() {
     super.initState();
+    // Rebuild so the clear (✕) button appears/disappears while typing.
+    _searchController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<KeluargaProvider>().loadKeluarga(refresh: true);
     });
@@ -31,75 +41,81 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _headerAnim.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<KeluargaProvider>();
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            SlideTransitionRoute(page: const KeluargaFormScreen()),
-          );
-          if (result == true) prov.loadKeluarga(refresh: true);
-        },
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-        label: const Text('Tambah'),
-      ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: _showSearch ? 150 : 120,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: AppTheme.gradientHeader,
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Keluarga', style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)),
-                              if (prov.total > 0)
-                                Text('${prov.total} KK', style: TextStyle(color: Colors.white.withOpacity(0.85))),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              _showSearch ? Icons.close_rounded : Icons.search_rounded,
-                              key: ValueKey(_showSearch),
-                              color: Colors.white,
+          // Height = inset + top pad + title row + (search block when open) + bottom pad.
+          // AnimatedBuilder keeps the bar height in sync with the search field
+          // animation, so content never overflows the header bounds.
+          AnimatedBuilder(
+            animation: _headerAnim,
+            builder: (context, _) => SliverAppBar(
+              expandedHeight: topInset + 88 + _headerAnim.value * 72,
+              pinned: true,
+              automaticallyImplyLeading: false,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: AppTheme.gradientHeaderOf(context),
+                  padding: EdgeInsets.fromLTRB(20, topInset + 24, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Keluarga',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white),
+                                ),
+                                if (prov.total > 0)
+                                  Text(
+                                    '${prov.total} KK',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+                                  ),
+                              ],
                             ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _showSearch = !_showSearch;
-                              if (!_showSearch) {
-                                _searchController.clear();
-                                prov.setSearch('');
-                              }
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                          IconButton(
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                _showSearch ? Icons.close_rounded : Icons.search_rounded,
+                                key: ValueKey(_showSearch),
+                                color: Colors.white,
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showSearch = !_showSearch;
+                                _showSearch ? _headerAnim.forward() : _headerAnim.reverse();
+                                if (!_showSearch) {
+                                  _searchController.clear();
+                                  prov.setSearch('');
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     AnimatedSize(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeOutCubic,
@@ -108,10 +124,10 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
                               padding: const EdgeInsets.only(top: 10, bottom: 14),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     width: 1,
                                   ),
                                 ),
@@ -121,12 +137,12 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
                                   onChanged: (v) => prov.setSearch(v),
                                   decoration: InputDecoration(
                                     hintText: 'Cari No. KK...',
-                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                                     border: InputBorder.none,
-                                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7)),
+                                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7)),
                                     suffixIcon: _searchController.text.isNotEmpty
                                         ? IconButton(
-                                            icon: Icon(Icons.clear_rounded, color: Colors.white.withOpacity(0.7), size: 18),
+                                            icon: Icon(Icons.clear_rounded, color: Colors.white.withValues(alpha: 0.7), size: 18),
                                             onPressed: () {
                                               _searchController.clear();
                                               prov.setSearch('');
@@ -146,35 +162,65 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
               ),
             ),
           ),
+          ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (prov.isLoading && prov.keluargaList.isEmpty)
-                  const SizedBox(height: 200, child: LoadingWidget())
-                else if (prov.error != null)
-                  ErrorDisplay(error: prov.error, onRetry: () => prov.loadKeluarga(refresh: true))
-                else if (prov.keluargaList.isEmpty)
-                  const EmptyState(icon: Icons.family_restroom_outlined, title: 'Belum ada data keluarga')
-                else
-                  ...prov.keluargaList.asMap().entries.map((entry) => StaggeredListAnimation(
-                    index: entry.key,
-                    child: _keluargaCard(context, entry.value),
-                  )),
-
-                if (prov.isLoadingMore)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-                if (prov.hasMore && !prov.isLoadingMore)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Center(
-                      child: TextButton(onPressed: () => prov.loadMore(), child: const Text('Muat lebih banyak...')),
-                    ),
-                  ),
-              ]),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (prov.keluargaList.isEmpty) {
+                    if (index == 0) {
+                      if (prov.isLoading) {
+                        return const SizedBox(height: 200, child: LoadingWidget());
+                      }
+                      if (prov.error != null) {
+                        return ErrorDisplay(error: prov.error, onRetry: () => prov.loadKeluarga(refresh: true));
+                      }
+                      return const EmptyState(icon: Icons.family_restroom_outlined, title: 'Belum ada data keluarga');
+                    }
+                    return null;
+                  }
+                  if (index < prov.keluargaList.length) {
+                    return StaggeredListAnimation(
+                      index: index,
+                      child: _keluargaCard(context, prov.keluargaList[index]),
+                    );
+                  }
+                  // Footer: indikator muat-lagi / tombol muat lebih banyak /
+                  // tombol tampilkan seluruh list sekaligus.
+                  if (prov.isLoadingMore) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  }
+                  if (prov.hasMore) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        children: [
+                          TextButton(
+                            onPressed: () => prov.loadMore(),
+                            child: const Text('Muat lebih banyak...'),
+                          ),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => prov.loadAll(),
+                              icon: const Icon(Icons.unfold_more_rounded, size: 18),
+                              label: Text('Tampilkan Semua (${prov.total})'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return null;
+                },
+                childCount: prov.keluargaList.isEmpty
+                    ? 1
+                    : prov.keluargaList.length + (prov.isLoadingMore || prov.hasMore ? 1 : 0),
+              ),
             ),
           ),
         ],
@@ -202,7 +248,7 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.family_restroom_rounded, color: AppTheme.primary, size: 24),
@@ -212,27 +258,39 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    k.kepalaKeluarga?.nama ?? 'Keluarga',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          k.kepalaKeluarga?.nama ?? 'Keluarga',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (k.isPendingSync) ...[
+                        const SizedBox(width: 8),
+                        const PendingSyncBadge(),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.badge_outlined, size: 12, color: AppTheme.textHint),
+                      Icon(Icons.badge_outlined, size: 12, color: AppTheme.textHintOf(context)),
                       const SizedBox(width: 4),
-                      Text(k.noKk, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textSecondary)),
+                      Text(k.noKk, style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textSecondaryOf(context))),
                     ],
                   ),
                   if (k.kelompokDasawisma != null) ...[
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.groups_outlined, size: 12, color: AppTheme.textHint),
+                        Icon(Icons.groups_outlined, size: 12, color: AppTheme.textHintOf(context)),
                         const SizedBox(width: 4),
                         Text(
                           '${k.kelompokDasawisma!.nama}${k.kelompokDasawisma!.dusun != null ? ' - ${k.kelompokDasawisma!.dusun}' : ''}',
-                          style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
+                          style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context)),
                         ),
                       ],
                     ),
@@ -240,11 +298,64 @@ class _KeluargaListScreenState extends State<KeluargaListScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _confirmDelete(context, k),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  color: AppTheme.error.withValues(alpha: 0.8),
+                  tooltip: 'Hapus keluarga',
+                ),
+                Icon(Icons.chevron_right_rounded, color: AppTheme.textHintOf(context)),
+              ],
+            ),
           ],
         ),
       ),
     ),
+    );
+  }
+
+  /// Konfirmasi hapus keluarga dari list. Online -> DELETE langsung;
+  /// offline -> diantrekan dan dihapus saat koneksi kembali.
+  void _confirmDelete(BuildContext context, KeluargaModel k) {
+    final namaKepala = k.kepalaKeluarga?.nama ?? 'Keluarga';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Keluarga'),
+        content: Text('Apakah Anda yakin ingin menghapus keluarga $namaKepala (No. KK ${k.noKk})? Semua anggota dan catatan terkait juga akan terpengaruh.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await context.read<KeluargaProvider>().deleteKeluarga(k);
+              if (!context.mounted) return;
+
+              if (!result.handled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Gagal menghapus keluarga.'), behavior: SnackBarBehavior.floating),
+                );
+                return;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result.queuedOffline
+                      ? 'Keluarga akan dihapus saat online.'
+                      : 'Keluarga berhasil dihapus.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -110,7 +110,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: AppTheme.cardDecoration,
+      decoration: AppTheme.cardDecorationOf(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -122,7 +122,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.location_on_rounded, size: 16, color: AppTheme.primary),
@@ -145,7 +145,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.1),
+                        color: AppTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -176,7 +176,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: AppTheme.borderOf(context)),
             ),
             clipBehavior: Clip.antiAlias,
             child: _hasLocation
@@ -212,18 +212,18 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                       )
                     // Offline fallback: stylized coordinate card
                     : Container(
-                        color: AppTheme.surface,
+                        color: AppTheme.surfaceOf(context),
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.map_rounded, size: 40, color: AppTheme.primary.withOpacity(0.3)),
+                              Icon(Icons.map_rounded, size: 40, color: AppTheme.primary.withValues(alpha: 0.3)),
                               const SizedBox(height: 8),
-                              const Text('Peta tidak tersedia (offline)', style: TextStyle(fontSize: 11, color: AppTheme.textHint)),
+                              Text('Peta tidak tersedia (offline)', style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context))),
                               const SizedBox(height: 4),
                               Text(
                                 '${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}',
-                                style: const TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                                style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: AppTheme.textSecondaryOf(context)),
                               ),
                             ],
                           ),
@@ -233,11 +233,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.map_outlined, size: 40, color: AppTheme.textHint.withOpacity(0.4)),
+                        Icon(Icons.map_outlined, size: 40, color: AppTheme.textHintOf(context).withValues(alpha: 0.4)),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Tekan "Deteksi" untuk menampilkan peta',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textHint),
+                          style: TextStyle(fontSize: 12, color: AppTheme.textHintOf(context)),
                         ),
                       ],
                     ),
@@ -255,13 +255,13 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.05),
+                        color: AppTheme.primary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Latitude', style: TextStyle(fontSize: 9, color: AppTheme.textHint)),
+                          Text('Latitude', style: TextStyle(fontSize: 9, color: AppTheme.textHintOf(context))),
                           const SizedBox(height: 2),
                           Text(
                             _latitude!.toStringAsFixed(6),
@@ -276,13 +276,13 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                       decoration: BoxDecoration(
-                        color: AppTheme.info.withOpacity(0.05),
+                        color: AppTheme.info.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Longitude', style: TextStyle(fontSize: 9, color: AppTheme.textHint)),
+                          Text('Longitude', style: TextStyle(fontSize: 9, color: AppTheme.textHintOf(context))),
                           const SizedBox(height: 2),
                           Text(
                             _longitude!.toStringAsFixed(6),
@@ -295,7 +295,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                   if (!_isOnline)
                     Padding(
                       padding: const EdgeInsets.only(left: 6),
-                      child: Icon(Icons.cloud_off_rounded, size: 14, color: AppTheme.textHint),
+                      child: Icon(Icons.cloud_off_rounded, size: 14, color: AppTheme.textHintOf(context)),
                     ),
                 ],
               ),
@@ -326,7 +326,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: AppTheme.border),
+                  borderSide: BorderSide(color: AppTheme.borderOf(context)),
                 ),
               ),
               maxLines: 2,

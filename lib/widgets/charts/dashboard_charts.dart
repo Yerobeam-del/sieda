@@ -6,61 +6,153 @@ import '../../models/dashboard_model.dart';
 
 // ======================== GENDER PIE CHART ========================
 
-class GenderPieChart extends StatelessWidget {
+class GenderPieChart extends StatefulWidget {
   final Ringkasan ringkasan;
 
   const GenderPieChart({super.key, required this.ringkasan});
 
   @override
+  State<GenderPieChart> createState() => _GenderPieChartState();
+}
+
+class _GenderPieChartState extends State<GenderPieChart> {
+  int _touchedIndex = -1;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final total = ringkasan.totalLakiLaki + ringkasan.totalPerempuan;
+    final total =
+        widget.ringkasan.totalLakiLaki + widget.ringkasan.totalPerempuan;
     if (total == 0) {
       return _emptyChart('Belum ada data penduduk',
-        iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
-        textColor: cs.onSurfaceVariant.withValues(alpha: 0.6),
-      );
+          iconColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+          textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
     }
+
+    final lakiPercent = (widget.ringkasan.totalLakiLaki / total * 100);
+    final perempuanPercent = (widget.ringkasan.totalPerempuan / total * 100);
 
     return Column(
       children: [
         SizedBox(
-          height: 180,
+          height: 200,
           child: PieChart(
             PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 45,
+              pieTouchData: PieTouchData(
+                touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                  setState(() {
+                    if (!event.isInterestedForInteractions ||
+                        pieTouchResponse == null ||
+                        pieTouchResponse.touchedSection == null) {
+                      _touchedIndex = -1;
+                      return;
+                    }
+                    _touchedIndex = pieTouchResponse
+                        .touchedSection!.touchedSectionIndex;
+                  });
+                },
+              ),
+              sectionsSpace: 3,
+              centerSpaceRadius: 52,
               sections: [
                 PieChartSectionData(
-                  value: ringkasan.totalLakiLaki.toDouble(),
+                  value: widget.ringkasan.totalLakiLaki.toDouble(),
                   color: AppTheme.male,
-                  radius: 35,
-                  title: '${(ringkasan.totalLakiLaki / total * 100).toStringAsFixed(1)}%',
-                  titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  radius: _touchedIndex == 0 ? 42 : 36,
+                  title: '${lakiPercent.toStringAsFixed(1)}%',
+                  titleStyle: TextStyle(
+                    fontSize: _touchedIndex == 0 ? 13 : 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  titlePositionPercentageOffset: 0.55,
                 ),
                 PieChartSectionData(
-                  value: ringkasan.totalPerempuan.toDouble(),
+                  value: widget.ringkasan.totalPerempuan.toDouble(),
                   color: AppTheme.female,
-                  radius: 35,
-                  title: '${(ringkasan.totalPerempuan / total * 100).toStringAsFixed(1)}%',
-                  titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  radius: _touchedIndex == 1 ? 42 : 36,
+                  title: '${perempuanPercent.toStringAsFixed(1)}%',
+                  titleStyle: TextStyle(
+                    fontSize: _touchedIndex == 1 ? 13 : 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  titlePositionPercentageOffset: 0.55,
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
+        // Center info (bawah pie)
+        if (_touchedIndex == 0)
+          _touchDetail(
+            color: AppTheme.male,
+            label: 'Laki-laki',
+            count: widget.ringkasan.totalLakiLaki,
+            percent: lakiPercent,
+          )
+        else if (_touchedIndex == 1)
+          _touchDetail(
+            color: AppTheme.female,
+            label: 'Perempuan',
+            count: widget.ringkasan.totalPerempuan,
+            percent: perempuanPercent,
+          )
+        else
+          const SizedBox(height: 20),
+        const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _legendItem(AppTheme.male, 'Laki-laki (${ringkasan.totalLakiLaki})',
+            _legendItem(AppTheme.male,
+                'Laki-laki (${widget.ringkasan.totalLakiLaki})',
                 textColor: cs.onSurfaceVariant),
             const SizedBox(width: 24),
-            _legendItem(AppTheme.female, 'Perempuan (${ringkasan.totalPerempuan})',
+            _legendItem(AppTheme.female,
+                'Perempuan (${widget.ringkasan.totalPerempuan})',
                 textColor: cs.onSurfaceVariant),
           ],
         ),
+        const SizedBox(height: 4),
+        Text(
+          'Total: $total jiwa',
+          style: TextStyle(
+            fontSize: 11,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _touchDetail({
+    required Color color,
+    required String label,
+    required int count,
+    required double percent,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            '$label: $count ($percent%)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -82,7 +174,8 @@ class DusunBarChart extends StatelessWidget {
           textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
     }
 
-    final maxValue = data.map((e) => e.totalKeluarga).reduce((a, b) => a > b ? a : b).toDouble();
+    final maxValue =
+        data.map((e) => e.totalKeluarga).reduce((a, b) => a > b ? a : b).toDouble();
     final colors = [
       cs.primary,
       cs.tertiary,
@@ -100,7 +193,32 @@ class DusunBarChart extends StatelessWidget {
           BarChartData(
             alignment: BarChartAlignment.spaceAround,
             maxY: maxValue * 1.2,
-            barTouchData: BarTouchData(enabled: true),
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  final d = data[groupIndex];
+                  return BarTooltipItem(
+                    '${d.dusun}\n',
+                    TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${d.totalKeluarga} KK',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
             titlesData: FlTitlesData(
               show: true,
               bottomTitles: AxisTitles(
@@ -114,14 +232,18 @@ class DusunBarChart extends StatelessWidget {
                     if (value == 0) return const SizedBox.shrink();
                     return Text(
                       '${value.toInt()}',
-                      style: TextStyle(fontSize: 10,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
+                      style: TextStyle(
+                          fontSize: 10,
+                          color:
+                              cs.onSurfaceVariant.withValues(alpha: 0.6)),
                     );
                   },
                 ),
               ),
-              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: FlGridData(
               show: true,
@@ -164,14 +286,21 @@ class MonthlyLineChart extends StatelessWidget {
   final int totalKeluarga;
   final int totalPenduduk;
 
-  const MonthlyLineChart({super.key, required this.totalKeluarga, required this.totalPenduduk});
+  const MonthlyLineChart(
+      {super.key, required this.totalKeluarga, required this.totalPenduduk});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // Generate simulated monthly data based on real totals
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    final monthsFull = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
     final now = DateTime.now();
     final currentMonth = now.month;
 
@@ -181,8 +310,12 @@ class MonthlyLineChart extends StatelessWidget {
     for (int i = 0; i < currentMonth; i++) {
       final progress = (i + 1) / currentMonth;
       final variation = sin((i + 1) * pi / currentMonth);
-      final kkValue = (totalKeluarga * progress * (0.85 + 0.15 * variation)).roundToDouble();
-      final pdValue = (totalPenduduk * progress * (0.85 + 0.15 * variation)).roundToDouble();
+      final kkValue =
+          (totalKeluarga * progress * (0.85 + 0.15 * variation))
+              .roundToDouble();
+      final pdValue =
+          (totalPenduduk * progress * (0.85 + 0.15 * variation))
+              .roundToDouble();
 
       keluargaSpots.add(FlSpot(i.toDouble(), kkValue));
       pendudukSpots.add(FlSpot(i.toDouble(), pdValue));
@@ -194,9 +327,8 @@ class MonthlyLineChart extends StatelessWidget {
           textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
     }
 
-    final maxY = pendudukSpots.isNotEmpty
-        ? (pendudukSpots.last.y * 1.2)
-        : 100.0;
+    final maxY =
+        pendudukSpots.isNotEmpty ? (pendudukSpots.last.y * 1.2) : 100.0;
 
     return SizedBox(
       height: 180,
@@ -221,15 +353,20 @@ class MonthlyLineChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 28,
-                interval: max(1, (currentMonth / 6).ceil()).toDouble(),
+                interval:
+                    max(1, (currentMonth / 6).ceil()).toDouble(),
                 getTitlesWidget: (value, meta) {
                   final idx = value.toInt();
-                  if (idx < 0 || idx >= months.length) return const SizedBox.shrink();
+                  if (idx < 0 || idx >= months.length) {
+                    return const SizedBox.shrink();
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(months[idx],
-                        style: TextStyle(fontSize: 9,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: cs.onSurfaceVariant
+                                .withValues(alpha: 0.6))),
                   );
                 },
               ),
@@ -241,13 +378,17 @@ class MonthlyLineChart extends StatelessWidget {
                 getTitlesWidget: (value, meta) {
                   if (value == 0) return const SizedBox.shrink();
                   return Text('${value.toInt()}',
-                      style: TextStyle(fontSize: 9,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6)));
+                      style: TextStyle(
+                          fontSize: 9,
+                          color: cs.onSurfaceVariant
+                              .withValues(alpha: 0.6)));
                 },
               ),
             ),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: false),
           lineBarsData: [
@@ -257,7 +398,16 @@ class MonthlyLineChart extends StatelessWidget {
               color: cs.primary,
               barWidth: 2.5,
               isStrokeCapRound: true,
-              dotData: FlDotData(show: false),
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) =>
+                    FlDotCirclePainter(
+                  radius: 2.5,
+                  color: cs.primary,
+                  strokeWidth: 1.5,
+                  strokeColor: Colors.white,
+                ),
+              ),
               belowBarData: BarAreaData(
                 show: true,
                 color: cs.primary.withValues(alpha: 0.08),
@@ -269,7 +419,16 @@ class MonthlyLineChart extends StatelessWidget {
               color: cs.tertiary,
               barWidth: 2.5,
               isStrokeCapRound: true,
-              dotData: FlDotData(show: false),
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) =>
+                    FlDotCirclePainter(
+                  radius: 2.5,
+                  color: cs.tertiary,
+                  strokeWidth: 1.5,
+                  strokeColor: Colors.white,
+                ),
+              ),
               belowBarData: BarAreaData(
                 show: true,
                 color: cs.tertiary.withValues(alpha: 0.08),
@@ -277,17 +436,34 @@ class MonthlyLineChart extends StatelessWidget {
             ),
           ],
           lineTouchData: LineTouchData(
+            handleBuiltInTouches: true,
             touchTooltipData: LineTouchTooltipData(
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((spot) {
-                  final isKeluarga = keluargaSpots.any((s) => s.x == spot.x && s.y == spot.y);
+                  final isKeluarga = keluargaSpots
+                      .any((s) => s.x == spot.x && s.y == spot.y);
+                  final monthIdx = spot.x.toInt();
+                  final monthName = monthIdx >= 0 && monthIdx < monthsFull.length
+                      ? monthsFull[monthIdx]
+                      : '';
                   return LineTooltipItem(
-                    '${isKeluarga ? "KK" : "Jiwa"}: ${spot.y.toInt()}',
+                    '$monthName\n',
                     TextStyle(
-                      color: isKeluarga ? cs.primary : cs.tertiary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 10,
                     ),
+                    children: [
+                      TextSpan(
+                        text:
+                            '${isKeluarga ? "KK" : "Jiwa"}: ${spot.y.toInt()}',
+                        style: TextStyle(
+                          color: isKeluarga ? cs.primary : cs.tertiary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   );
                 }).toList();
               },
@@ -299,7 +475,7 @@ class MonthlyLineChart extends StatelessWidget {
   }
 }
 
-// ======================== DUSUN PENDUDUK CHART (Stacked) ========================
+// ======================== DUSUN PENDUDUK CHART (Grouped) ========================
 
 class DusunPendudukChart extends StatelessWidget {
   final List<PerDusun> perDusun;
@@ -316,7 +492,8 @@ class DusunPendudukChart extends StatelessWidget {
           textColor: cs.onSurfaceVariant.withValues(alpha: 0.6));
     }
 
-    final maxValue = data.map((e) => e.totalPenduduk).reduce((a, b) => a > b ? a : b).toDouble();
+    final maxValue =
+        data.map((e) => e.totalPenduduk).reduce((a, b) => a > b ? a : b).toDouble();
     final colors = [
       cs.primary,
       cs.tertiary,
@@ -334,7 +511,35 @@ class DusunPendudukChart extends StatelessWidget {
           BarChartData(
             alignment: BarChartAlignment.spaceAround,
             maxY: maxValue * 1.2,
-            barTouchData: BarTouchData(enabled: true),
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  final d = data[groupIndex];
+                  final isKk = rodIndex == 0;
+                  return BarTooltipItem(
+                    '${d.dusun}\n',
+                    TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: isKk
+                            ? 'KK: ${d.totalKeluarga}'
+                            : 'Jiwa: ${d.totalPenduduk}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
             titlesData: FlTitlesData(
               show: true,
               bottomTitles: AxisTitles(
@@ -343,13 +548,19 @@ class DusunPendudukChart extends StatelessWidget {
                   reservedSize: 40,
                   getTitlesWidget: (value, meta) {
                     final idx = value.toInt();
-                    if (idx < 0 || idx >= data.length) return const SizedBox.shrink();
+                    if (idx < 0 || idx >= data.length) {
+                      return const SizedBox.shrink();
+                    }
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        data[idx].dusun.length > 8 ? '${data[idx].dusun.substring(0, 8)}...' : data[idx].dusun,
-                        style: TextStyle(fontSize: 9,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
+                        data[idx].dusun.length > 8
+                            ? '${data[idx].dusun.substring(0, 8)}...'
+                            : data[idx].dusun,
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: cs.onSurfaceVariant
+                                .withValues(alpha: 0.6)),
                       ),
                     );
                   },
@@ -358,8 +569,10 @@ class DusunPendudukChart extends StatelessWidget {
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: FlGridData(show: false),
             borderData: FlBorderData(show: false),
@@ -380,7 +593,8 @@ class DusunPendudukChart extends StatelessWidget {
                   ),
                   BarChartRodData(
                     toY: d.totalPenduduk.toDouble(),
-                    color: colors[index % colors.length].withValues(alpha: 0.4),
+                    color: colors[index % colors.length]
+                        .withValues(alpha: 0.4),
                     width: 16,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(4),
@@ -406,15 +620,18 @@ Widget _legendItem(Color color, String label, {required Color textColor}) {
       Container(
         width: 10,
         height: 10,
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+        decoration: BoxDecoration(
+            color: color, borderRadius: BorderRadius.circular(2)),
       ),
       const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontSize: 11, color: textColor)),
+      Text(label,
+          style: TextStyle(fontSize: 11, color: textColor)),
     ],
   );
 }
 
-Widget _emptyChart(String message, {required Color iconColor, required Color textColor}) {
+Widget _emptyChart(String message,
+    {required Color iconColor, required Color textColor}) {
   return SizedBox(
     height: 120,
     child: Center(
@@ -423,7 +640,8 @@ Widget _emptyChart(String message, {required Color iconColor, required Color tex
         children: [
           Icon(Icons.bar_chart_rounded, size: 32, color: iconColor),
           const SizedBox(height: 8),
-          Text(message, style: TextStyle(fontSize: 12, color: textColor)),
+          Text(message,
+              style: TextStyle(fontSize: 12, color: textColor)),
         ],
       ),
     ),

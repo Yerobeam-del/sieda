@@ -219,9 +219,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                            _legendDot(cs.primary, 'KK'),
-                            const SizedBox(width: 24),
-                            _legendDot(AppTheme.info, 'Jiwa'),
+                              _legendDot(cs.primary, 'KK (Keluarga)'),
+                              const SizedBox(width: 24),
+                              _legendDot(cs.tertiary, 'Jiwa (Penduduk)'),
                             ],
                           ),
                         ],
@@ -320,6 +320,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final ringkasan = data.ringkasan;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final totalGender = ringkasan.totalLakiLaki + ringkasan.totalPerempuan;
+
+    // Rasio gender (contoh: 1.05 L per 1 P)
+    final genderRatio = totalGender > 0
+        ? (ringkasan.totalLakiLaki / ringkasan.totalPerempuan)
+        : 0.0;
+    final ratioText = ringkasan.totalPerempuan > 0
+        ? '${genderRatio.toStringAsFixed(2)} : 1'
+        : '-';
+
+    // Persentase gender
+    final lakiPercent = totalGender > 0
+        ? (ringkasan.totalLakiLaki / totalGender * 100).toStringAsFixed(1)
+        : '0';
+    final perempuanPercent = totalGender > 0
+        ? (ringkasan.totalPerempuan / totalGender * 100).toStringAsFixed(1)
+        : '0';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,16 +386,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: AppTheme.info,
             ),
             StatCard(
-              title: 'Laki-laki',
+              title: 'Laki-laki ($lakiPercent%)',
               value: ringkasan.totalLakiLaki.toString(),
               icon: Icons.male_rounded,
               color: AppTheme.male,
             ),
             StatCard(
-              title: 'Perempuan',
+              title: 'Perempuan ($perempuanPercent%)',
               value: ringkasan.totalPerempuan.toString(),
               icon: Icons.female_rounded,
               color: AppTheme.female,
+            ),
+          ],
+        ),
+        if (totalGender > 0) ...[
+          const SizedBox(height: 10),
+          // Rasio gender bar
+          _buildGenderRatioBar(
+            context,
+            lakiPercent: double.tryParse(lakiPercent) ?? 0,
+            perempuanPercent: double.tryParse(perempuanPercent) ?? 0,
+            ratioText: 'Rasio L:P = $ratioText',
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Gender ratio visual bar — menunjukkan proporsi L:P secara visual.
+  Widget _buildGenderRatioBar(
+    BuildContext context, {
+    required double lakiPercent,
+    required double perempuanPercent,
+    required String ratioText,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 8,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: (lakiPercent * 100).toInt().clamp(1, 100),
+                  child: Container(color: AppTheme.male),
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  flex: (perempuanPercent * 100).toInt().clamp(1, 100),
+                  child: Container(color: AppTheme.female),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '♂ $lakiPercent%',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.male,
+              ),
+            ),
+            Text(
+              ratioText,
+              style: TextStyle(
+                fontSize: 10,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
+            ),
+            Text(
+              '♀ $perempuanPercent%',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.female,
+              ),
             ),
           ],
         ),
@@ -596,6 +686,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (data.kesehatan.isEmpty) return const SizedBox.shrink();
 
+    // Hitung total kesehatan dari semua dusun
+    final totalBalita =
+        data.kesehatan.fold(0, (sum, k) => sum + k.totalBalita);
+    final totalBumil =
+        data.kesehatan.fold(0, (sum, k) => sum + k.ibuHamil);
+    final totalStunting =
+        data.kesehatan.fold(0, (sum, k) => sum + k.stunting);
+    final totalMenyusui =
+        data.kesehatan.fold(0, (sum, k) => sum + k.ibuMenyusui);
+    final totalLansia =
+        data.kesehatan.fold(0, (sum, k) => sum + k.lansia);
+    final totalPenduduk = data.ringkasan.totalPenduduk;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -606,13 +709,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text('Data Kesehatan', style: theme.textTheme.titleLarge),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        // Ringkasan kesehatan total
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side:
+                BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Seluruh Dusun',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _kesehatanChipWithPercent(
+                      icon: Icons.child_care_rounded,
+                      label: 'Balita',
+                      value: totalBalita,
+                      total: totalPenduduk,
+                      color: Colors.orange,
+                    ),
+                    _kesehatanChipWithPercent(
+                      icon: Icons.pregnant_woman_rounded,
+                      label: 'Bumil',
+                      value: totalBumil,
+                      total: totalPenduduk,
+                      color: AppTheme.female,
+                    ),
+                    _kesehatanChipWithPercent(
+                      icon: Icons.science_rounded,
+                      label: 'Menyusui',
+                      value: totalMenyusui,
+                      total: totalPenduduk,
+                      color: Colors.purple,
+                    ),
+                    _kesehatanChipWithPercent(
+                      icon: Icons.warning_rounded,
+                      label: 'Stunting',
+                      value: totalStunting,
+                      total: totalPenduduk,
+                      color: AppTheme.error,
+                    ),
+                    _kesehatanChipWithPercent(
+                      icon: Icons.elderly_rounded,
+                      label: 'Lansia',
+                      value: totalLansia,
+                      total: totalPenduduk,
+                      color: AppTheme.info,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Detail per dusun
         ...data.kesehatan.map((k) => Card(
               elevation: 0,
               margin: const EdgeInsets.only(bottom: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+                side: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.4)),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -624,8 +795,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: BoxDecoration(
-                            color: cs.primary,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.success,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -653,6 +824,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             )),
       ],
+    );
+  }
+
+  /// Kesehatan chip dengan persentase dari total penduduk.
+  Widget _kesehatanChipWithPercent({
+    required IconData icon,
+    required String label,
+    required int value,
+    required int total,
+    required Color color,
+  }) {
+    final percent =
+        total > 0 ? (value / total * 100).toStringAsFixed(1) : '0';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$value',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                '$label ($percent%)',
+                style: TextStyle(
+                  color: color.withValues(alpha: 0.8),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

@@ -22,6 +22,7 @@ class PendudukProvider extends ChangeNotifier {
   int _lastPage = 1;
   int _total = 0;
   String _searchQuery = '';
+  String? _filterJenisKelamin; // null = semua, 'L' = laki-laki, 'P' = perempuan
 
   List<PendudukModel> get pendudukList => [..._pendingList, ..._serverList];
   PendudukModel? get selectedPenduduk => _selectedPenduduk;
@@ -30,7 +31,15 @@ class PendudukProvider extends ChangeNotifier {
   ApiException? get error => _error;
   int get total => _total;
   String get searchQuery => _searchQuery;
+  String? get filterJenisKelamin => _filterJenisKelamin;
   bool get hasMore => _currentPage < _lastPage;
+
+  /// Filter jenis kelamin (server-side): null = semua, 'L'/'P'.
+  void setFilterJenisKelamin(String? value) {
+    if (_filterJenisKelamin == value) return;
+    _filterJenisKelamin = value;
+    loadPenduduk(refresh: true);
+  }
 
   Future<void> loadPenduduk({bool refresh = false}) async {
     if (refresh) {
@@ -53,6 +62,9 @@ class PendudukProvider extends ChangeNotifier {
         'per_page': 25,
       };
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+      if (_filterJenisKelamin != null) {
+        queryParams['jenis_kelamin'] = _filterJenisKelamin;
+      }
 
       final response = await client.get(ApiEndpoints.penduduk, queryParameters: queryParams);
       final data = response['data'] as List<dynamic>;
@@ -101,6 +113,9 @@ class PendudukProvider extends ChangeNotifier {
         'per_page': 25,
       };
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+      if (_filterJenisKelamin != null) {
+        queryParams['jenis_kelamin'] = _filterJenisKelamin;
+      }
 
       final response = await client.get(ApiEndpoints.penduduk, queryParameters: queryParams);
       final data = response['data'] as List<dynamic>;
@@ -139,6 +154,9 @@ class PendudukProvider extends ChangeNotifier {
         'per_page': 'all',
       };
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+      if (_filterJenisKelamin != null) {
+        queryParams['jenis_kelamin'] = _filterJenisKelamin;
+      }
 
       final response = await client.get(ApiEndpoints.penduduk, queryParameters: queryParams);
       final data = response['data'] as List<dynamic>;

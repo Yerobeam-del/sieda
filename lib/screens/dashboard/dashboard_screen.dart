@@ -7,7 +7,9 @@ import '../../widgets/loading_widget.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/top_fade_overlay.dart';
+import '../../widgets/animations/page_transitions.dart';
 import '../../widgets/charts/dashboard_charts.dart';
+import 'dusun_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -597,55 +599,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        ...data.perDusun.map((dusun) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${dusun.id}',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w700,
+        ...data.perDusun.map((dusun) => ScaleOnTap(
+              onTap: () {
+                Navigator.of(context).push(
+                  SharedAxisRoute(
+                    page: DusunDetailScreen(
+                      dusunId: dusun.id,
+                      dusunName: dusun.dusun,
+                    ),
+                  ),
+                );
+              },
+              child: Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.4)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${dusun.id}',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            dusun.dusun,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dusun.dusun,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${dusun.totalKeluarga} KK  ·  ${dusun.totalPenduduk} Jiwa',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              '${dusun.totalKeluarga} KK  ·  ${dusun.totalPenduduk} Jiwa',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Ketuk untuk detail dasawisma',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color:
+                                    cs.primary.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-                  ],
+                      Icon(Icons.chevron_right_rounded,
+                          color: cs.primary),
+                    ],
+                  ),
                 ),
               ),
             )),

@@ -7,6 +7,8 @@ import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
 import '../../widgets/pending_sync_badge.dart';
+import '../../widgets/header_search_field.dart';
+import '../../widgets/filter_chip_bar.dart';
 import 'catatan_detail_screen.dart';
 
 class CatatanListScreen extends StatefulWidget {
@@ -17,12 +19,22 @@ class CatatanListScreen extends StatefulWidget {
 }
 
 class _CatatanListScreenState extends State<CatatanListScreen> {
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    // Rebuild agar tombol clear (✕) muncul/hilang saat mengetik.
+    _searchController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CatatanProvider>().loadCatatan(refresh: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -71,9 +83,35 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
             ),
           ),
 
-          // Filter tabs
+          // Filter tabs + pencarian + tahun
           SliverToBoxAdapter(
-            child: _buildFilterTabs(context, prov),
+            child: Column(
+              children: [
+                _buildFilterTabs(context, prov),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: HeaderSearchField(
+                    controller: _searchController,
+                    hintText: 'Cari nama ibu, suami, bayi...',
+                    onChanged: prov.setSearch,
+                  ),
+                ),
+                if (prov.availableYears.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: FilterChipBar<int?>(
+                      options: [
+                        (label: 'Semua Tahun', value: null),
+                        ...prov.availableYears
+                            .map((y) => (label: '$y', value: y)),
+                      ],
+                      selected: prov.filterTahun,
+                      onSelected: prov.setFilterTahun,
+                    ),
+                  ),
+                const SizedBox(height: 4),
+              ],
+            ),
           ),
 
           // Content
@@ -87,10 +125,12 @@ class _CatatanListScreenState extends State<CatatanListScreen> {
                       ? SliverFillRemaining(
                           child: EmptyState(
                             icon: Icons.baby_changing_station_rounded,
-                            title: prov.filterStatus == 'all'
-                                ? 'Belum ada catatan'
-                                : 'Tidak ada catatan ${prov.filterStatus}',
-                            subtitle: 'Tekan + untuk menambah catatan baru',
+                            title: prov.hasActiveFilter
+                                ? 'Tidak ada catatan yang cocok'
+                                : 'Belum ada catatan',
+                            subtitle: prov.hasActiveFilter
+                                ? 'Coba ubah filter atau kata kunci'
+                                : 'Tekan + untuk menambah catatan baru',
                           ),
                         )
                       : SliverPadding(

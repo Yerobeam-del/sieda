@@ -9,6 +9,7 @@ import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
 import '../../widgets/pending_sync_badge.dart';
 import '../../widgets/header_search_field.dart';
+import '../../widgets/filter_chip_bar.dart';
 import 'penduduk_detail_screen.dart';
 
 class PendudukListScreen extends StatefulWidget {
@@ -193,6 +194,23 @@ class _PendudukListScreenState extends State<PendudukListScreen>
             ),
           ),
           ),
+          // Filter jenis kelamin (server-side)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              child: FilterChipBar<String?>(
+                options: const [
+                  (label: 'Semua', value: null),
+                  (label: 'Laki-laki', value: 'L'),
+                  (label: 'Perempuan', value: 'P'),
+                ],
+                selected: prov.filterJenisKelamin,
+                onSelected: (v) => prov.setFilterJenisKelamin(v),
+                activeColor: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
@@ -209,9 +227,14 @@ class _PendudukListScreenState extends State<PendudukListScreen>
                           onRetry: () => prov.loadPenduduk(refresh: true),
                         );
                       }
-                      return const EmptyState(
+                      return EmptyState(
                         icon: Icons.people_outline_rounded,
-                        title: 'Belum ada data penduduk',
+                        title: prov.filterJenisKelamin != null
+                            ? 'Tidak ada penduduk ${prov.filterJenisKelamin == 'L' ? 'laki-laki' : 'perempuan'}'
+                            : 'Belum ada data penduduk',
+                        subtitle: prov.filterJenisKelamin != null
+                            ? 'Coba ubah filter jenis kelamin'
+                            : null,
                       );
                     }
                     return null;

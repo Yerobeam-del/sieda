@@ -8,6 +8,7 @@ import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
 import '../../widgets/pending_sync_badge.dart';
 import '../../widgets/header_search_field.dart';
+import '../../widgets/filter_chip_bar.dart';
 import 'keluarga_detail_screen.dart';
 
 class KeluargaListScreen extends StatefulWidget {
@@ -132,6 +133,11 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
                               });
                             },
                           ),
+                          // Filter dusun
+                          FilterIconButton(
+                            onPressed: () => _openDusunFilter(context, prov),
+                            isActive: prov.filterIdDusun != null,
+                          ),
                         ],
                       ),
                     AnimatedSize(
@@ -186,6 +192,21 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
             ),
           ),
           ),
+          // Chip filter dusun aktif (jika ada)
+          if (prov.filterDusunName != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12, left: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ActiveFilterChip(
+                    label: 'Dusun: ${prov.filterDusunName}',
+                    onClear: () => prov.setFilterDusun(null),
+                  ),
+                ),
+              ),
+            ),
+
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
@@ -337,6 +358,157 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
         ),
       ),
     ),
+    );
+  }
+
+  /// Daftar dusun untuk bottom sheet filter (di-cache di State).
+  Future<List<Map<String, dynamic>>>? _dusunFuture;
+
+  /// Bottom sheet pilihan filter dusun (daftar dari `/references/dusun`).
+  Future<void> _openDusunFilter(BuildContext context, KeluargaProvider prov) async {
+    final cs = Theme.of(context).colorScheme;
+
+    // Ambil daftar dusun (sekali per State, bisa di-refresh via "Coba lagi").
+    _dusunFuture ??= prov.fetchDusunOptions();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: cs.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      isScrollControlled: true,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheetState) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.7,
+            maxChildSize: 0.9,
+            minChildSize: 0.4,
+            builder: (ctx, scrollController) => Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on_rounded, color: cs.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Filter Dusun',
+                        style: Theme.of(sheetCtx).textTheme.titleLarge,
+                      ),
+                      const Spacer(),
+                      if (prov.filterIdDusun != null)
+                        TextButton(
+                          onPressed: () {
+                            prov.setFilterDusun(null);
+                            Navigator.pop(sheetCtx);
+                          },
+                          child: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _dusunFuture,
+                    builder: (ctx, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                      }
+                      if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
+                        return EmptyState(
+                          icon: Icons.location_off_rounded,
+                          title: 'Daftar dusun tidak tersedia',
+                          subtitle: 'Periksa koneksi lalu coba lagi',
+                          actionLabel: 'Coba lagi',
+                          onAction: () => setSheetState(() {
+                            _dusunFuture = prov.fetchDusunOptions();
+                          }),
+                        );
+                      }
+
+                      final dusunList = snapshot.data!;
+                      return ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        children: [
+                          // Opsi "Semua Dusun"
+                          _dusunOption(
+                            ctx,
+                            idDusun: null,
+                            nama: 'Semua Dusun',
+                            icon: Icons.all_inclusive_rounded,
+                            selectedId: prov.filterIdDusun,
+                            onTap: () {
+                              prov.setFilterDusun(null);
+                              Navigator.pop(sheetCtx);
+                            },
+                          ),
+                          ...dusunList.map((d) => _dusunOption(
+                                ctx,
+                                idDusun: int.tryParse('${d['id']}'),
+                                nama: '${d['nama'] ?? 'Dusun ${d['id']}'}',
+                                icon: Icons.location_on_outlined,
+                                selectedId: prov.filterIdDusun,
+                                onTap: () {
+                                  prov.setFilterDusun(
+                                    int.tryParse('${d['id']}'),
+                                    namaDusun: '${d['nama'] ?? ''}',
+                                  );
+                                  Navigator.pop(sheetCtx);
+                                },
+                              )),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ),
+    );
+  }
+
+  Widget _dusunOption(
+    BuildContext context, {
+    required int? idDusun,
+    required String nama,
+    required IconData icon,
+    required int? selectedId,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isSelected = idDusun == selectedId;
+
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? cs.primary : cs.onSurfaceVariant,
+      ),
+      title: Text(
+        nama,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected ? cs.primary : cs.onSurface,
+        ),
+      ),
+      trailing: isSelected
+          ? Icon(Icons.check_circle_rounded, color: cs.primary, size: 20)
+          : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
     );
   }
 

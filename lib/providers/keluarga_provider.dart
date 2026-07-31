@@ -22,6 +22,8 @@ class KeluargaProvider extends ChangeNotifier {
   int _lastPage = 1;
   int _total = 0;
   String _searchQuery = '';
+  int? _filterIdDusun; // null = semua dusun
+  String? _filterDusunName; // nama dusun aktif (untuk label chip)
 
   List<KeluargaModel> get keluargaList => [..._pendingList, ..._serverList];
   KeluargaModel? get selectedKeluarga => _selectedKeluarga;
@@ -30,7 +32,31 @@ class KeluargaProvider extends ChangeNotifier {
   ApiException? get error => _error;
   int get total => _total;
   String get searchQuery => _searchQuery;
+  int? get filterIdDusun => _filterIdDusun;
+  String? get filterDusunName => _filterDusunName;
   bool get hasMore => _currentPage < _lastPage;
+
+  /// Filter berdasarkan dusun (server-side `id_dusun`).
+  void setFilterDusun(int? idDusun, {String? namaDusun}) {
+    if (_filterIdDusun == idDusun) return;
+    _filterIdDusun = idDusun;
+    _filterDusunName = namaDusun;
+    loadKeluarga(refresh: true);
+  }
+
+  /// Ambil daftar dusun (untuk pilihan filter) dari `/references/dusun`.
+  Future<List<Map<String, dynamic>>> fetchDusunOptions() async {
+    try {
+      final token = await LocalStorage.getToken();
+      if (token == null) return [];
+      final client = ApiClient(token: token);
+      final response = await client.get(ApiEndpoints.referencesDusun);
+      return (response['data'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
 
   Future<void> loadKeluarga({bool refresh = false}) async {
     if (refresh) {
@@ -53,6 +79,7 @@ class KeluargaProvider extends ChangeNotifier {
         'per_page': 25,
       };
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+      if (_filterIdDusun != null) queryParams['id_dusun'] = _filterIdDusun;
       queryParams['with'] = 'kepala_keluarga,kelompok_dasawisma';
 
       final response = await client.get(ApiEndpoints.keluarga, queryParameters: queryParams);
@@ -103,6 +130,7 @@ class KeluargaProvider extends ChangeNotifier {
           'page': _currentPage,
           'per_page': 25,
           if (_searchQuery.isNotEmpty) 'search': _searchQuery,
+          if (_filterIdDusun != null) 'id_dusun': _filterIdDusun,
         },
       );
       final data = response['data'] as List<dynamic>;
@@ -138,6 +166,7 @@ class KeluargaProvider extends ChangeNotifier {
         'with': 'kepala_keluarga,kelompok_dasawisma',
       };
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+      if (_filterIdDusun != null) queryParams['id_dusun'] = _filterIdDusun;
 
       final response = await client.get(ApiEndpoints.keluarga, queryParameters: queryParams);
       final data = response['data'] as List<dynamic>;

@@ -17,19 +17,82 @@ class CatatanProvider extends ChangeNotifier {
   bool _isLoading = false;
   ApiException? _error;
   String _filterStatus = 'all'; // all, hamil, melahirkan, nifas, meninggal
+  String _searchQuery = '';
+  int? _filterTahun; // null = semua tahun
 
   List<CatatanKelahiranKematianModel> get catatanList => [..._pendingList, ..._serverList];
   CatatanKelahiranKematianModel? get selectedCatatan => _selectedCatatan;
   bool get isLoading => _isLoading;
   ApiException? get error => _error;
   String get filterStatus => _filterStatus;
+  String get searchQuery => _searchQuery;
+  int? get filterTahun => _filterTahun;
+
+  /// Tahun yang tersedia di data (descending) — untuk chip filter tahun.
+  List<int> get availableYears {
+    final years = catatanList
+        .map((c) => c.configYear)
+        .where((y) => y > 0)
+        .toSet()
+        .toList();
+    years.sort((a, b) => b.compareTo(a));
+    return years;
+  }
+
+  /// Ada filter aktif selain "Semua" (untuk pesan empty state).
+  bool get hasActiveFilter =>
+      _filterStatus != 'all' || _filterTahun != null || _searchQuery.isNotEmpty;
 
   List<CatatanKelahiranKematianModel> get filteredList {
-    if (_filterStatus == 'all') return catatanList;
     return catatanList.where((c) {
-      if (_filterStatus == 'death') return c.isDeath;
-      return c.statusIbu?.toLowerCase() == _filterStatus;
+      // Status (hamil/melahirkan/nifas/meninggal)
+      if (_filterStatus != 'all') {
+        if (_filterStatus == 'death') {
+          if (!c.isDeath) return false;
+        } else if (c.statusIbu?.toLowerCase() != _filterStatus) {
+          return false;
+        }
+      }
+      // Tahun
+      if (_filterTahun != null && c.configYear != _filterTahun) {
+        return false;
+      }
+      // Pencarian teks (nama ibu/suami/bayi/meninggal, status, kelompok)
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        final haystack = [
+          c.namaIbu,
+          c.namaSuami,
+          c.namaBayi,
+          c.namaMeninggal,
+          c.statusIbu,
+          c.statusKematian,
+          c.namaKelompok,
+        ].whereType<String>().join(' ').toLowerCase();
+        if (!haystack.contains(q)) return false;
+      }
+      return true;
     }).toList();
+  }
+
+  /// Pencarian teks (klien-side — list dimuat penuh tanpa paginasi).
+  void setSearch(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  /// Filter tahun (null = semua tahun).
+  void setFilterTahun(int? tahun) {
+    _filterTahun = tahun;
+    notifyListeners();
+  }
+
+  /// Reset semua filter ke default.
+  void clearFilters() {
+    _filterStatus = 'all';
+    _filterTahun = null;
+    _searchQuery = '';
+    notifyListeners();
   }
 
   /// Load all catatan from API, fallback to cache

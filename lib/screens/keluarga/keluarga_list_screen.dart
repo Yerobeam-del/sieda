@@ -7,6 +7,7 @@ import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
 import '../../widgets/pending_sync_badge.dart';
+import '../../widgets/header_search_field.dart';
 import 'keluarga_detail_screen.dart';
 
 class KeluargaListScreen extends StatefulWidget {
@@ -21,6 +22,12 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
   final _searchController = TextEditingController();
   bool _showSearch = false;
 
+  /// Kontrol scroll list — untuk indikator posisi di header.
+  final ScrollController _scrollController = ScrollController();
+
+  /// Progres scroll (0..1): seberapa jauh user berada di dalam list.
+  final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
+
   /// Animates the header height in sync with the search field so the
   /// expandedHeight never overflows its content while toggling.
   late final AnimationController _headerAnim = AnimationController(
@@ -33,14 +40,24 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
     super.initState();
     // Rebuild so the clear (✕) button appears/disappears while typing.
     _searchController.addListener(() => setState(() {}));
+    _scrollController.addListener(_updateScrollProgress);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<KeluargaProvider>().loadKeluarga(refresh: true);
     });
   }
 
+  /// Hitung seberapa jauh user sudah scroll (0..1) untuk bar di header.
+  void _updateScrollProgress() {
+    final pos = _scrollController.position;
+    final max = pos.maxScrollExtent;
+    _scrollProgress.value = max <= 0 ? 0 : (pos.pixels / max).clamp(0.0, 1.0);
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
+    _scrollProgress.dispose();
     _headerAnim.dispose();
     super.dispose();
   }
@@ -52,6 +69,7 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
 
     return Scaffold(
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           // Height = inset + top pad + title row + (search block when open) + bottom pad.
           // AnimatedBuilder keeps the bar height in sync with the search field
@@ -122,42 +140,47 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
                       child: _showSearch
                           ? Padding(
                               padding: const EdgeInsets.only(top: 10, bottom: 14),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: _searchController,
-                                  autofocus: true,
-                                  onChanged: (v) => prov.setSearch(v),
-                                  decoration: InputDecoration(
-                                    hintText: 'Cari No. KK...',
-                                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                                    border: InputBorder.none,
-                                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7)),
-                                    suffixIcon: _searchController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: Icon(Icons.clear_rounded, color: Colors.white.withValues(alpha: 0.7), size: 18),
-                                            onPressed: () {
-                                              _searchController.clear();
-                                              prov.setSearch('');
-                                            },
-                                          )
-                                        : null,
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                  ),
-                                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                                ),
+                              child: HeaderSearchField(
+                                controller: _searchController,
+                                hintText: 'Cari No. KK...',
+                                onChanged: (v) => prov.setSearch(v),
                               ),
                             )
                           : const SizedBox.shrink(),
                     ),
                   ],
+                ),
+              ),
+            ),
+            // Bar tipis di bawah header — menunjukkan posisi user
+            // (seberapa jauh list sudah di-scroll).
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(3),
+              child: ValueListenableBuilder<double>(
+                valueListenable: _scrollProgress,
+                builder: (context, progress, _) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      height: 3,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Track samar — baru tampil setelah ada scroll.
+                          if (progress > 0)
+                            Container(color: Colors.white.withValues(alpha: 0.25)),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: progress,
+                              child: Container(color: Colors.white.withValues(alpha: 0.95)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -487,9 +487,9 @@ class AppTheme {
   static NavigationBarThemeData _darkNavBar(ColorScheme cs) =>
       NavigationBarThemeData(
         backgroundColor: cs.surfaceContainer,
-        // Indikator dibuat transparan agar navbar seragam — status terpilih
-        // tetap terlihat dari warna ikon & label yang berbeda.
-        indicatorColor: Colors.transparent,
+        // Pill indicator seperti tema terang — menggantikan kotak transparan
+        // yang muncul saat indicatorColor di-set Colors.transparent.
+        indicatorColor: cs.primaryContainer,
         surfaceTintColor: Colors.transparent,
         elevation: 2,
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,

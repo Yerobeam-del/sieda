@@ -14,6 +14,12 @@ class KeluargaProvider extends ChangeNotifier {
   // tampil paling atas dengan badge "Menunggu sinkron".
   List<KeluargaModel> _serverList = [];
   List<KeluargaModel> _pendingList = [];
+
+  /// No. KK yang punya data Dasawisma Keluarga (kesehatan) di antrian
+  /// offline — dipakai list keluarga untuk menandai "sudah diisi" meski
+  /// data belum tersinkron ke server.
+  final Set<String> _pendingDasawismaNoKk = {};
+
   KeluargaModel? _selectedKeluarga;
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -26,6 +32,10 @@ class KeluargaProvider extends ChangeNotifier {
   String? _filterDusunName; // nama dusun aktif (untuk label chip)
 
   List<KeluargaModel> get keluargaList => [..._pendingList, ..._serverList];
+
+  /// No. KK yang memiliki data Dasawisma Keluarga offline (belum sinkron).
+  Set<String> get pendingDasawismaNoKk => _pendingDasawismaNoKk;
+
   KeluargaModel? get selectedKeluarga => _selectedKeluarga;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
@@ -203,6 +213,21 @@ class KeluargaProvider extends ChangeNotifier {
                 isPendingSync: true,
               ))
           .toList();
+    } catch (_) {}
+
+    // Kumpulkan No. KK yang datanya (Dasawisma kesehatan) masih menunggu
+    // sinkron — agar list keluarga tetap menandai keluarga itu "sudah diisi".
+    _pendingDasawismaNoKk.clear();
+    try {
+      final rows = await LocalDatabase().getUnsyncedDasawisma();
+      for (final r in rows) {
+        if (r['tipe'] != 'kesehatan' || r['action'] == 'DELETE') continue;
+        try {
+          final json = jsonDecode(r['json_data'] as String) as Map<String, dynamic>;
+          final noKk = json['no_kk']?.toString();
+          if (noKk != null && noKk.isNotEmpty) _pendingDasawismaNoKk.add(noKk);
+        } catch (_) {}
+      }
     } catch (_) {}
   }
 

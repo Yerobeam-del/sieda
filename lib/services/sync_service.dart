@@ -237,7 +237,16 @@ class SyncService {
               debugPrint('[Sync] Tunda anggota keluarga no_kk $noKk: keluarga belum terkirim.');
               continue;
             }
-            await client.post(ApiEndpoints.keluargaAnggota(noKk), data: {'nik': nik});
+            // Backend storeBulk mengharapkan array `anggota`, bukan objek
+            // tunggal — sama dengan jalur online di anggota_keluarga_screen.
+            await client.post(
+              ApiEndpoints.keluargaAnggota(noKk),
+              data: {
+                'anggota': [
+                  {'nik': nik}
+                ]
+              },
+            );
           }
           await _localDB.markAnggotaKeluargaSynced(id);
           record('Anggota', true);

@@ -98,7 +98,9 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
 
     final data = {
       'no_kk': _noKkController.text.trim(),
-      'id_kepala_keluarga': _kepalaKeluargaController.text.trim(),
+      // Backend memvalidasi kolom `nik_kepala_keluarga` (bukan
+      // `id_kepala_keluarga`) — pastikan payload sesuai kontrak API.
+      'nik_kepala_keluarga': _kepalaKeluargaController.text.trim(),
       'id_kelompok_dasawisma': _idKelompokDasawisma,
       'config_year': DateTime.now().year,
     };
@@ -162,7 +164,7 @@ class _KeluargaFormScreenState extends State<KeluargaFormScreen> {
       ActivityService().logSave(
         tipe: 'Keluarga',
         nama: data['no_kk'] ?? '',
-        identifier: data['id_kepala_keluarga'],
+        identifier: data['nik_kepala_keluarga'],
         isEdit: _isEditing,
         isOnline: false,
       );

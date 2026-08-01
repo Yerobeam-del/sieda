@@ -40,6 +40,21 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
     _loadAnggota();
   }
 
+  /// Gabungkan relasi `warga` (nested) ke level atas agar cocok dengan
+  /// `PendudukModel.fromJson` yang membaca field flat (nama, jenis_kelamin,
+  /// tanggal_lahir). Kompatibel dengan resource lama (nested) maupun baru.
+  Map<String, dynamic> _flattenAnggota(Map<String, dynamic> e) {
+    final warga = e['warga'];
+    if (warga is Map<String, dynamic>) {
+      return {
+        ...warga,
+        ...e,
+        'is_kepala_keluarga': e['is_kepala_keluarga'] ?? false,
+      };
+    }
+    return e;
+  }
+
   Future<void> _loadAnggota() async {
     setState(() {
       _isLoading = true;
@@ -58,7 +73,11 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
         setState(() {
           _anggota = [
             ...pending,
-            ...data.map((e) => PendudukModel.fromJson(e as Map<String, dynamic>)),
+            ...data.map(
+              (e) => PendudukModel.fromJson(
+                _flattenAnggota(e as Map<String, dynamic>),
+              ),
+            ),
           ];
           _isLoading = false;
         });
@@ -106,7 +125,11 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
               setState(() {
                 _anggota = [
                   ...pending,
-                  ...anggota.map((e) => PendudukModel.fromJson(e as Map<String, dynamic>)),
+                  ...anggota.map(
+                    (e) => PendudukModel.fromJson(
+                      _flattenAnggota(e as Map<String, dynamic>),
+                    ),
+                  ),
                 ];
                 _isLoading = false;
               });
@@ -144,7 +167,15 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
       try {
         final token = await LocalStorage.getToken();
         final client = ApiClient(token: token!);
-        await client.post(ApiEndpoints.keluargaAnggota(widget.noKk), data: {'nik': p.nik});
+        // Backend storeBulk mengharapkan array `anggota`, bukan objek tunggal.
+        await client.post(
+          ApiEndpoints.keluargaAnggota(widget.noKk),
+          data: {
+            'anggota': [
+              {'nik': p.nik}
+            ]
+          },
+        );
         if (!mounted) return;
         await ActivityService().logSave(
           tipe: 'Anggota',
@@ -186,6 +217,13 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
   // ==================== HAPUS ANGGOTA ====================
 
   Future<void> _removeAnggota(PendudukModel a) async {
+    // Kepala Keluarga tidak dapat dikeluarkan (server menolak) — cegah sejak
+    // awal agar user tidak melihat error di tengah proses.
+    if (a.isKepalaKeluarga) {
+      _showSnackbar('Kepala Keluarga tidak dapat dikeluarkan dari keluarga.');
+      return;
+    }
+
     // Ambil status koneksi SEBELUM await agar tidak ada async gap pada context.
     final isOnline = context.read<ConnectivityService>().isOnline;
     final confirmed = await showDialog<bool>(
@@ -347,6 +385,27 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
             Flexible(
               child: Text(a.nama, style: Theme.of(context).textTheme.titleMedium),
             ),
+            if (a.isKepalaKeluarga) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, size: 13, color: AppTheme.primary),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Kepala Keluarga',
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (a.isPendingSync) ...[
               const SizedBox(width: 8),
               const PendingSyncBadge(),
@@ -358,11 +417,21 @@ class _AnggotaKeluargaScreenState extends State<AnggotaKeluargaScreen> {
           style: TextStyle(fontSize: 11, color: AppTheme.textSecondaryOf(context)),
           maxLines: 2,
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.person_remove_outlined, color: AppTheme.error),
-          tooltip: 'Keluarkan dari keluarga',
-          onPressed: () => _removeAnggota(a),
-        ),
+        // Kepala Keluarga tidak dapat dikeluarkan (ditolak server) — tampilkan
+        // indikasi yang jelas, bukan tombol hapus yang gagal diam-diam.
+        trailing: a.isKepalaKeluarga
+            ? Tooltip(
+                message: 'Kepala Keluarga tidak dapat dikeluarkan dari keluarga',
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Icon(Icons.lock_outline_rounded, color: Colors.grey),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.person_remove_outlined, color: AppTheme.error),
+                tooltip: 'Keluarkan dari keluarga',
+                onPressed: () => _removeAnggota(a),
+              ),
       ),
     );
   }

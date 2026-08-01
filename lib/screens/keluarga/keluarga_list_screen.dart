@@ -273,6 +273,11 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
   }
 
   Widget _keluargaCard(BuildContext context, KeluargaModel k) {
+    // Sudah terisi jika datanya ada di respons server ATAU masih menunggu
+    // sinkron dari input offline (antrian pending dasawisma kesehatan).
+    final hasDasawisma = k.dasawismaKeluarga != null ||
+        context.read<KeluargaProvider>().pendingDasawismaNoKk.contains(k.noKk);
+
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => KeluargaDetailScreen(noKk: k.noKk)),
@@ -339,6 +344,8 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
                       ],
                     ),
                   ],
+                  const SizedBox(height: 6),
+                  _dasawismaStatusChip(context, hasDasawisma),
                 ],
               ),
             ),
@@ -358,6 +365,35 @@ class _KeluargaListScreenState extends State<KeluargaListScreen>
         ),
       ),
     ),
+    );
+  }
+
+  /// Chip kecil status pengisian Form Dasawisma Keluarga (kesehatan).
+  /// Hijau = sudah terisi (server atau pending offline); amber = belum diisi
+  /// — supaya kader langsung tahu keluarga mana yang perlu disurvei.
+  Widget _dasawismaStatusChip(BuildContext context, bool hasData) {
+    final color = hasData ? AppTheme.success : AppTheme.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            hasData ? Icons.health_and_safety_rounded : Icons.assignment_late_outlined,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            hasData ? 'Dasawisma terisi' : 'Belum diisi Dasawisma',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
     );
   }
 

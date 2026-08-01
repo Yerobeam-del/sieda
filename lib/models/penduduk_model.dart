@@ -9,6 +9,10 @@ class PendudukModel {
   final String? alamat;
   final String? noHp;
 
+  /// No. KK keluarga tempat penduduk terdaftar (dari relasi anggota
+  /// keluarga di backend) — dipakai untuk akses cepat form Dasawisma Keluarga.
+  final String? noKk;
+
   // Referensi (relasi — disimpan sebagai String nama untuk display)
   final String? agama;
   final String? pendidikan;
@@ -39,6 +43,10 @@ class PendudukModel {
   /// ke server) — dipakai UI untuk menampilkan badge "Menunggu sinkron".
   final bool isPendingSync;
 
+  /// true bila penduduk ini adalah Kepala Keluarga pada daftar anggota —
+  /// dipakai UI untuk menandai & melindungi anggota yang tidak boleh dihapus.
+  final bool isKepalaKeluarga;
+
   PendudukModel({
     required this.nik,
     required this.nama,
@@ -48,6 +56,7 @@ class PendudukModel {
     this.jenisKelamin,
     this.alamat,
     this.noHp,
+    this.noKk,
     this.agama,
     this.pendidikan,
     this.pekerjaan,
@@ -70,6 +79,7 @@ class PendudukModel {
     this.kebutuhanKhusus,
     this.active = true,
     this.isPendingSync = false,
+    this.isKepalaKeluarga = false,
   });
 
   factory PendudukModel.fromJson(Map<String, dynamic> json, {bool isPendingSync = false}) {
@@ -91,6 +101,7 @@ class PendudukModel {
       jenisKelamin: json['jenis_kelamin']?.toString(),
       alamat: json['alamat']?.toString(),
       noHp: json['no_hp']?.toString(),
+      noKk: json['no_kk']?.toString(),
       agama: extractName(json['agama']),
       pendidikan: extractName(json['pendidikan']),
       pekerjaan: extractName(json['pekerjaan']),
@@ -113,6 +124,9 @@ class PendudukModel {
       kebutuhanKhusus: extractName(json['kebutuhan_khusus']),
       active: parseActive(json['active']),
       isPendingSync: isPendingSync,
+      isKepalaKeluarga: json['is_kepala_keluarga'] == true ||
+          json['is_kepala_keluarga'] == 1 ||
+          json['is_kepala_keluarga'] == '1',
     );
   }
 
@@ -120,7 +134,7 @@ class PendudukModel {
 
   /// Salinan model dengan nilai field tertentu diganti. Saat ini dipakai
   /// untuk menandai item sebagai pending sinkron (isPendingSync).
-  PendudukModel copyWith({bool? isPendingSync}) => PendudukModel(
+  PendudukModel copyWith({String? noKk, bool? isPendingSync, bool? isKepalaKeluarga}) => PendudukModel(
         nik: nik,
         nama: nama,
         noRegistrasi: noRegistrasi,
@@ -129,6 +143,7 @@ class PendudukModel {
         jenisKelamin: jenisKelamin,
         alamat: alamat,
         noHp: noHp,
+        noKk: noKk ?? this.noKk,
         agama: agama,
         pendidikan: pendidikan,
         pekerjaan: pekerjaan,
@@ -151,6 +166,7 @@ class PendudukModel {
         kebutuhanKhusus: kebutuhanKhusus,
         active: active,
         isPendingSync: isPendingSync ?? this.isPendingSync,
+        isKepalaKeluarga: isKepalaKeluarga ?? this.isKepalaKeluarga,
       );
 
   String get genderLabel {

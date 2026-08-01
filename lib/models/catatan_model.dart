@@ -25,6 +25,7 @@ class CatatanKelahiranKematianModel {
   final String? statusIbu;
   final int? bulanHamil;
   final String? tanggalHamil;
+  final String? tanggalPerkiraanLahir;
   final String? tanggalMelahirkan;
   final String? tanggalNifasSelesai;
 
@@ -68,6 +69,7 @@ class CatatanKelahiranKematianModel {
     this.statusIbu,
     this.bulanHamil,
     this.tanggalHamil,
+    this.tanggalPerkiraanLahir,
     this.tanggalMelahirkan,
     this.tanggalNifasSelesai,
     this.namaBayi,
@@ -135,27 +137,49 @@ class CatatanKelahiranKematianModel {
     final fallbackNamaIbu = json['nama_ibu']?.toString() ?? namaIbu;
     final fallbackNamaSuami = json['nama_suami']?.toString() ?? namaSuami;
 
+    // Skema resource baru: data bersarang di data_ibu / data_kelahiran /
+    // data_kematian / periode. Fallback tetap mendukung skema lama (flat).
+    Map<String, dynamic>? nested(String key) {
+      final v = json[key];
+      return v is Map<String, dynamic> ? v : null;
+    }
+
+    final dataIbu = nested('data_ibu');
+    final dataKelahiran = nested('data_kelahiran');
+    final dataKematian = nested('data_kematian');
+
     return CatatanKelahiranKematianModel(
       id: _parseInt(json['id']),
       idWargaIbu: json['id_warga_ibu']?.toString(),
       idWargaSuami: json['id_warga_suami']?.toString(),
       noKk: json['no_kk']?.toString(),
-      idGroupDasawisma: _parseInt(json['id_group_dasawisma']),
-      statusIbu: json['status_ibu']?.toString(),
+      idGroupDasawisma:
+          _parseIntNullable(json['id_kelompok_dasawisma'] ?? json['id_group_dasawisma']),
+      statusIbu: dataIbu?['status_ibu']?.toString() ?? json['status_ibu']?.toString(),
       bulanHamil: _parseIntNullable(json['bulan_hamil']),
-      tanggalHamil: json['tanggal_hamil']?.toString(),
-      tanggalMelahirkan: json['tanggal_melahirkan']?.toString(),
-      tanggalNifasSelesai: json['tanggal_nifas_selesai']?.toString(),
-      namaBayi: json['nama_bayi']?.toString(),
-      jenisKelaminBayi: json['jenis_kelamin_bayi']?.toString(),
-      tanggalLahirBayi: json['tanggal_lahir_bayi']?.toString(),
-      akteKelahiran: json['akte_kelahiran']?.toString(),
-      noAkteKelahiran: json['no_akte_kelahiran']?.toString(),
-      statusKematian: json['status_kematian']?.toString(),
-      namaMeninggal: json['nama_meninggal']?.toString(),
-      jenisKelaminMeninggal: json['jenis_kelamin_meninggal']?.toString(),
-      tanggalMeninggal: json['tanggal_meninggal']?.toString(),
-      sebabMeninggal: json['sebab_meninggal']?.toString(),
+      tanggalHamil: dataIbu?['tanggal_hamil']?.toString() ?? json['tanggal_hamil']?.toString(),
+      tanggalPerkiraanLahir:
+          dataIbu?['tanggal_perkiraan_lahir']?.toString() ?? json['tanggal_perkiraan_lahir']?.toString(),
+      tanggalMelahirkan:
+          dataIbu?['tanggal_melahirkan']?.toString() ?? json['tanggal_melahirkan']?.toString(),
+      tanggalNifasSelesai:
+          dataIbu?['tanggal_nifas_selesai']?.toString() ?? json['tanggal_nifas_selesai']?.toString(),
+      namaBayi: dataKelahiran?['nama_bayi']?.toString() ?? json['nama_bayi']?.toString(),
+      jenisKelaminBayi:
+          dataKelahiran?['jenis_kelamin']?.toString() ?? json['jenis_kelamin_bayi']?.toString(),
+      tanggalLahirBayi:
+          dataKelahiran?['tanggal']?.toString() ?? json['tanggal_lahir_bayi']?.toString(),
+      akteKelahiran:
+          dataKelahiran?['status_akte']?.toString() ?? json['akte_kelahiran']?.toString(),
+      noAkteKelahiran:
+          dataKelahiran?['no_akte']?.toString() ?? json['no_akte_kelahiran']?.toString(),
+      statusKematian: dataKematian?['status']?.toString() ?? json['status_kematian']?.toString(),
+      namaMeninggal: dataKematian?['nama']?.toString() ?? json['nama_meninggal']?.toString(),
+      jenisKelaminMeninggal:
+          dataKematian?['jenis_kelamin']?.toString() ?? json['jenis_kelamin_meninggal']?.toString(),
+      tanggalMeninggal:
+          dataKematian?['tanggal']?.toString() ?? json['tanggal_meninggal']?.toString(),
+      sebabMeninggal: dataKematian?['sebab']?.toString() ?? json['sebab_meninggal']?.toString(),
       configYear: json['config_year'] != null ? _parseInt(json['config_year']) : DateTime.now().year,
       keterangan: json['keterangan']?.toString(),
       active: json['active'] == 1 || json['active'] == true || json['active'] == '1',
@@ -169,27 +193,31 @@ class CatatanKelahiranKematianModel {
     );
   }
 
+  /// Payload untuk API — mengikuti skema tabel tp_pkk_catatan_ibu_anak
+  /// (data ibu/kelahiran/kematian). Dipakai untuk penyimpanan offline
+  /// (pending_catatan) & dikirim ulang oleh SyncService.
   Map<String, dynamic> toJson() => {
         'id': id,
         'id_warga_ibu': idWargaIbu,
         'id_warga_suami': idWargaSuami,
         'no_kk': noKk,
-        'id_group_dasawisma': idGroupDasawisma,
+        'id_kelompok_dasawisma': idGroupDasawisma,
         'status_ibu': statusIbu,
-        'bulan_hamil': bulanHamil,
+        'tanggal_perkiraan_lahir': tanggalPerkiraanLahir,
         'tanggal_hamil': tanggalHamil,
         'tanggal_melahirkan': tanggalMelahirkan,
         'tanggal_nifas_selesai': tanggalNifasSelesai,
-        'nama_bayi': namaBayi,
-        'jenis_kelamin_bayi': jenisKelaminBayi,
-        'tanggal_lahir_bayi': tanggalLahirBayi,
-        'akte_kelahiran': akteKelahiran,
-        'no_akte_kelahiran': noAkteKelahiran,
-        'status_kematian': statusKematian,
-        'nama_meninggal': namaMeninggal,
-        'jenis_kelamin_meninggal': jenisKelaminMeninggal,
-        'tanggal_meninggal': tanggalMeninggal,
-        'sebab_meninggal': sebabMeninggal,
+        'kelahiran_status': namaBayi != null && namaBayi!.isNotEmpty ? 'Ada' : null,
+        'kelahiran_nama_bayi': namaBayi,
+        'kelahiran_jenis_kelamin': jenisKelaminBayi,
+        'kelahiran_tanggal': tanggalLahirBayi,
+        'kelahiran_status_akte': akteKelahiran,
+        'kelahiran_no_akte': noAkteKelahiran,
+        'kematian_status': statusKematian,
+        'kematian_nama': namaMeninggal,
+        'kematian_jenis_kelamin': jenisKelaminMeninggal,
+        'kematian_tanggal': tanggalMeninggal,
+        'kematian_sebab': sebabMeninggal,
         'keterangan': keterangan,
         'config_year': configYear,
         'nama_ibu': namaIbu,

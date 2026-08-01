@@ -4,9 +4,12 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/helpers.dart';
 import '../../models/penduduk_model.dart';
 import '../../providers/penduduk_provider.dart';
+import '../../providers/keluarga_provider.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_display.dart';
 import '../../widgets/pending_sync_badge.dart';
+import '../../widgets/animations/page_transitions.dart';
+import '../dasawisma/dasawisma_keluarga_form_screen.dart';
 
 class PendudukDetailScreen extends StatefulWidget {
   final String nik;
@@ -109,6 +112,24 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           ]),
           const SizedBox(height: 24),
 
+          // ============ DATA KESEHATAN KELUARGA (DASAWISMA) ============
+          if (p.noKk != null && p.noKk!.isNotEmpty) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _openDasawismaKeluargaForm(p.noKk!),
+                icon: const Icon(Icons.health_and_safety_rounded, size: 18),
+                label: Text('Data Kesehatan Keluarga (No. KK ${p.noKk})'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.success,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // ============ HAPUS ============
           SizedBox(
             width: double.infinity,
@@ -126,6 +147,22 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
           ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  /// Buka form Data Kesehatan Keluarga (Dasawisma) untuk No. KK keluarga
+  /// terkait. Data yang sudah tersimpan di-pre-fetch dulu agar form terbuka
+  /// dalam mode edit — mencegah data lama tertimpa saat menyimpan.
+  Future<void> _openDasawismaKeluargaForm(String noKk) async {
+    // Tangkap provider sebelum async gap (lint-safe).
+    final keluargaProv = context.read<KeluargaProvider>();
+    await keluargaProv.loadDetail(noKk);
+    if (!mounted) return;
+    final dk = keluargaProv.selectedKeluarga?.dasawismaKeluarga;
+    Navigator.of(context).push(
+      SlideTransitionRoute(
+        page: DasawismaKeluargaFormScreen(initialNoKK: noKk, data: dk),
       ),
     );
   }

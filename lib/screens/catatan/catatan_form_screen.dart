@@ -27,7 +27,9 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
   late final TextEditingController _nikIbuController;
   late final TextEditingController _nikSuamiController;
   late final TextEditingController _noKkController;
-  int? _bulanHamil;
+  DateTime? _tanggalHamil;
+  DateTime? _tanggalPerkiraanLahir;
+  late final TextEditingController _tanggalHamilController;
   late final TextEditingController _tanggalMelahirkanController;
   late final TextEditingController _tanggalNifasController;
   late final TextEditingController _namaBayiController;
@@ -62,7 +64,13 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
     _nikIbuController = TextEditingController(text: c?.idWargaIbu ?? '');
     _nikSuamiController = TextEditingController(text: c?.idWargaSuami ?? '');
     _noKkController = TextEditingController(text: c?.noKk ?? '');
-    _bulanHamil = c?.bulanHamil;
+    final tglHamil = c?.tanggalHamil;
+    _tanggalHamil = tglHamil != null ? DateTime.tryParse(tglHamil) : null;
+    final tpl = c?.tanggalPerkiraanLahir;
+    _tanggalPerkiraanLahir = tpl != null ? DateTime.tryParse(tpl) : null;
+    _tanggalHamilController = TextEditingController(
+      text: c?.tanggalHamil ?? '',
+    );
     _tanggalMelahirkanController = TextEditingController(text: c?.tanggalMelahirkan ?? '');
     _tanggalNifasController = TextEditingController(text: c?.tanggalNifasSelesai ?? '');
     _namaBayiController = TextEditingController(text: c?.namaBayi ?? '');
@@ -86,6 +94,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
     _nikSuamiController.dispose();
     _noKkController.dispose();
 
+    _tanggalHamilController.dispose();
     _tanggalMelahirkanController.dispose();
     _tanggalNifasController.dispose();
     _namaBayiController.dispose();
@@ -131,27 +140,30 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
       'id_warga_suami': _nikSuamiController.text.trim().isNotEmpty ? _nikSuamiController.text.trim() : null,
       'no_kk': _noKkController.text.trim().isNotEmpty ? _noKkController.text.trim() : null,
       'status_ibu': _statusIbu,
-      'bulan_hamil': _bulanHamil,
+      'tanggal_perkiraan_lahir': _tanggalPerkiraanLahir != null
+          ? DateFormat('yyyy-MM-dd').format(_tanggalPerkiraanLahir!)
+          : null,
+      'tanggal_hamil': _tanggalHamil != null
+          ? DateFormat('yyyy-MM-dd').format(_tanggalHamil!)
+          : null,
       'tanggal_melahirkan': _tanggalMelahirkanController.text.trim().isNotEmpty ? _tanggalMelahirkanController.text.trim() : null,
       'tanggal_nifas_selesai': _tanggalNifasController.text.trim().isNotEmpty ? _tanggalNifasController.text.trim() : null,
-      'nama_bayi': _namaBayiController.text.trim().isNotEmpty ? _namaBayiController.text.trim() : null,
-      'jenis_kelamin_bayi': _jenisKelaminBayi,
-      'tanggal_lahir_bayi': _tanggalLahirBayiController.text.trim().isNotEmpty ? _tanggalLahirBayiController.text.trim() : null,
-      'akte_kelahiran': _akteKelahiran,
-      'no_akte_kelahiran': _noAkteController.text.trim().isNotEmpty ? _noAkteController.text.trim() : null,
-      'status_kematian': _statusKematian,
-      'nama_meninggal': _namaMeninggalController.text.trim().isNotEmpty ? _namaMeninggalController.text.trim() : null,
-      'jenis_kelamin_meninggal': _jenisKelaminMeninggal,
-      'tanggal_meninggal': _tanggalMeninggalController.text.trim().isNotEmpty ? _tanggalMeninggalController.text.trim() : null,
-      'sebab_meninggal': _sebabMeninggalController.text.trim().isNotEmpty ? _sebabMeninggalController.text.trim() : null,
+      // Skema baru: data kelahiran & kematian berprefix kelahiran_*/kematian_*
+      'kelahiran_status': _namaBayiController.text.trim().isNotEmpty ? 'Ada' : null,
+      'kelahiran_nama_bayi': _namaBayiController.text.trim().isNotEmpty ? _namaBayiController.text.trim() : null,
+      'kelahiran_jenis_kelamin': _jenisKelaminBayi,
+      'kelahiran_tanggal': _tanggalLahirBayiController.text.trim().isNotEmpty ? _tanggalLahirBayiController.text.trim() : null,
+      'kelahiran_status_akte': _akteKelahiran,
+      'kelahiran_no_akte': _noAkteController.text.trim().isNotEmpty ? _noAkteController.text.trim() : null,
+      'kematian_status': _statusKematian,
+      'kematian_nama': _namaMeninggalController.text.trim().isNotEmpty ? _namaMeninggalController.text.trim() : null,
+      'kematian_jenis_kelamin': _jenisKelaminMeninggal,
+      'kematian_tanggal': _tanggalMeninggalController.text.trim().isNotEmpty ? _tanggalMeninggalController.text.trim() : null,
+      'kematian_sebab': _sebabMeninggalController.text.trim().isNotEmpty ? _sebabMeninggalController.text.trim() : null,
       'keterangan': _keteranganController.text.trim().isNotEmpty ? _keteranganController.text.trim() : null,
       'config_year': DateTime.now().year,
     };
 
-    // Hapus bulan_hamil jika null atau status bukan hamil
-    if (_statusIbu != 'hamil') {
-      data.remove('bulan_hamil');
-    }
     // Remove null values
     data.removeWhere((key, value) => value == null);
 
@@ -328,7 +340,20 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
               const SizedBox(height: 16),
 
               if (_statusIbu == 'hamil') ...[
-                _monthPicker('Bulan Hamil *', _bulanHamil, (v) => _bulanHamil = v),
+                _dateField(_tanggalHamilController, 'Tanggal Hamil (HPHT) *', _tanggalHamil, (d) {
+                  setState(() {
+                    _tanggalHamil = d;
+                    // Aturan Naegele: HPHT + 9 bulan + 7 hari
+                    _tanggalPerkiraanLahir = DateTime(d.year, d.month + 9, d.day + 7);
+                  });
+                }),
+                if (_tanggalPerkiraanLahir != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Perkiraan lahir: ${DateFormat('dd MMMM yyyy', 'id').format(_tanggalPerkiraanLahir!)}',
+                    style: TextStyle(fontSize: 12, color: AppTheme.primary),
+                  ),
+                ],
               ],
               if (_statusIbu == 'melahirkan' || _statusIbu == 'nifas') ...[
                 _dateField(_tanggalMelahirkanController, 'Tanggal Melahirkan', _tanggalMelahirkan, (d) => _tanggalMelahirkan = d),
@@ -409,9 +434,9 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _toggleChip('Ibu', _statusKematian == 'ibu', AppTheme.error, () => setState(() => _statusKematian = 'ibu')),
-                  _toggleChip('Bayi', _statusKematian == 'bayi', AppTheme.error, () => setState(() => _statusKematian = 'bayi')),
-                  _toggleChip('Balita', _statusKematian == 'balita', AppTheme.error, () => setState(() => _statusKematian = 'balita')),
+                  _toggleChip('Ibu', _statusKematian == 'Ibu', AppTheme.error, () => setState(() => _statusKematian = 'Ibu')),
+                  _toggleChip('Bayi', _statusKematian == 'Bayi', AppTheme.error, () => setState(() => _statusKematian = 'Bayi')),
+                  _toggleChip('Balita', _statusKematian == 'Balita', AppTheme.error, () => setState(() => _statusKematian = 'Balita')),
                 ],
               ),
 
@@ -527,30 +552,6 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _monthPicker(String label, int? currentValue, ValueChanged<int> onChanged) {
-    return DropdownButtonFormField<int>(
-      initialValue: currentValue != null && currentValue >= 1 && currentValue <= 12 ? currentValue : null,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: const Icon(Icons.calendar_month_outlined),
-      ),
-      items: List.generate(12, (i) {
-        final month = i + 1;
-        return DropdownMenuItem(
-          value: month,
-          child: Text(DateFormat('MMMM', 'id').format(DateTime(2000, month))),
-        );
-      }),
-      onChanged: (v) {
-        if (v != null) onChanged(v);
-      },
-      validator: (v) {
-        if (_statusIbu == 'hamil' && v == null) return 'Bulan hamil wajib diisi';
-        return null;
-      },
     );
   }
 

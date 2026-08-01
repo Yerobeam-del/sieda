@@ -174,7 +174,9 @@ class _DasawismaKeluargaFormScreenState extends State<DasawismaKeluargaFormScree
       _offerOfflineSave(data);
     }
 
-    setState(() => _isLoading = false);
+    // Guard: setelah Navigator.pop(true) pada jalur sukses, widget sudah
+    // dibuang — setState tidak boleh dipanggil lagi.
+    if (mounted) setState(() => _isLoading = false);
   }
 
   int? _parseInt(String text) {

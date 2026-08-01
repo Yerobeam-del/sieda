@@ -116,9 +116,10 @@ class _CatatanDetailScreenState extends State<CatatanDetailScreen> {
           const SizedBox(height: 8),
           _infoCard(context, [
             _infoRow(context, 'Status Ibu', c.statusIbuLabel),
-            // Hamil: tampilkan bulan, fallback ke tanggal_hamil (legacy)
+            // Hamil: tampilkan tanggal hamil (legacy: bulan hamil)
             if (c.bulanHamil != null) _infoRow(context, 'Bulan Hamil', DateFormat('MMMM', 'id').format(DateTime(2000, c.bulanHamil!))),
             if (c.bulanHamil == null && c.tanggalHamil != null) _infoRow(context, 'Tanggal Hamil', c.tanggalHamil!),
+            if (c.tanggalPerkiraanLahir != null) _infoRow(context, 'Perkiraan Lahir', c.tanggalPerkiraanLahir!),
             if (c.tanggalMelahirkan != null) _infoRow(context, 'Tanggal Melahirkan', c.tanggalMelahirkan!),
             if (c.tanggalNifasSelesai != null) _infoRow(context, 'Nifas Selesai', c.tanggalNifasSelesai!),
           ]),

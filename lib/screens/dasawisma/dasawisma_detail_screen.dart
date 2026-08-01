@@ -8,7 +8,6 @@ import '../../widgets/error_display.dart';
 import '../../widgets/animations/page_transitions.dart';
 import '../../widgets/pending_sync_badge.dart';
 import 'dasawisma_form_screen.dart';
-import 'dasawisma_keluarga_form_screen.dart';
 
 class KelompokDetailScreen extends StatefulWidget {
   final int kelompokId;
@@ -102,45 +101,28 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Actions
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    final provider = context.read<DasawismaProvider>();
-                    Navigator.of(context).push(SlideTransitionRoute(
-                      page: DasawismaKelompokFormScreen(kelompok: k),
-                    )).then((_) {
-                      if (mounted) {
-                        provider.loadKelompokDetail(widget.kelompokId);
-                      }
-                    });
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Edit'),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
+          // Actions — form Data Kesehatan Keluarga diakses per keluarga
+          // (halaman Detail Keluarga) atau lewat tab Keluarga di Dasawisma.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                final provider = context.read<DasawismaProvider>();
+                Navigator.of(context).push(SlideTransitionRoute(
+                  page: DasawismaKelompokFormScreen(kelompok: k),
+                )).then((_) {
+                  if (mounted) {
+                    provider.loadKelompokDetail(widget.kelompokId);
+                  }
+                });
+              },
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Edit Kelompok'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(SlideTransitionRoute(
-                    page: DasawismaKeluargaFormScreen(initialNoKK: ''),
-                  )),
-                  icon: const Icon(Icons.health_and_safety_outlined, size: 18),
-                  label: const Text('Data Kesehatan'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.success,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 24),
 

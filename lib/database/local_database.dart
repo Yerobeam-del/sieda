@@ -415,8 +415,11 @@ class LocalDatabase {
   /// (POST baru), UPDATE (PUT ke detail), atau DELETE (hapus di server).
   ///
   /// Kunci penggabungan: kelompok → `id`, kesehatan → `no_kk`. Jika entitas
-  /// yang sama sudah punya baris pending, baris itu diperbarui (action tetap
-  /// CREATE bila awalnya CREATE — dikirim sekali, data final).
+  /// yang sama sudah punya baris pending, baris itu diperbarui — termasuk
+  /// baris yang SUDAH terkirim (synced=1) yang di-reuse agar antrian tetap
+  /// SATU baris per entitas: baris diaktifkan ulang (synced=0, retry direset)
+  /// sehingga editan offline berikutnya ikut terkirim, bukan menambah baris
+  /// baru yang menumpuk.
   Future<void> savePendingDasawisma(Map<String, dynamic> data, String tipe,
       {String action = 'CREATE'}) async {
     final db = await database;
@@ -424,12 +427,23 @@ class LocalDatabase {
         ? {'id': data['id']?.toString()}
         : {'no_kk': data['no_kk']?.toString()};
     if (keys.values.every((v) => v != null && v.isNotEmpty)) {
-      final existing = await _findUnsyncedByJson('pending_dasawisma', keys, tipe: tipe);
+      // 1) Baris yang masih menunggu sinkron — perbarui langsung.
+      final pending = await _findUnsyncedByJson('pending_dasawisma', keys, tipe: tipe);
+      // 2) Jika tidak ada, reuse baris lama (sudah synced) untuk entitas yang
+      //    sama agar tidak menumpuk banyak baris per no_kk/id.
+      final existing = pending ?? await _findAnyByJson('pending_dasawisma', keys, tipe: tipe);
       if (existing != null) {
         final keepAction = existing['action'] == 'DELETE' ? action : existing['action'];
         await db.update(
           'pending_dasawisma',
-          {'json_data': jsonEncode(data), 'action': keepAction},
+          {
+            'json_data': jsonEncode(data),
+            'action': keepAction,
+            'synced': 0,
+            'retry_count': 0,
+            'last_error': null,
+            'next_retry_at': null,
+          },
           where: 'id = ?',
           whereArgs: [existing['id']],
         );
@@ -714,6 +728,35 @@ class LocalDatabase {
       table,
       where: 'synced = ?${tipe != null ? ' AND tipe = ?' : ''}',
       whereArgs: tipe != null ? [0, tipe] : [0],
+    );
+    for (final row in rows) {
+      final json = jsonDecode(row['json_data'] as String? ?? '{}') as Map<String, dynamic>;
+      var match = true;
+      for (final entry in keys.entries) {
+        if (json[entry.key]?.toString() != entry.value?.toString()) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return row;
+    }
+    return null;
+  }
+
+  /// Cari baris pending pada [table] yang json_data-nya cocok dengan semua
+  /// pasangan key [keys] — TANPA filter synced (mencakup baris yang sudah
+  /// terkirim, mis. untuk di-reuse saat entitas yang sama diedit lagi offline).
+  /// Opsional [tipe] khusus tabel pending_dasawisma (kelompok / kesehatan).
+  Future<Map<String, dynamic>?> _findAnyByJson(
+    String table,
+    Map<String, Object?> keys, {
+    String? tipe,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      table,
+      where: tipe != null ? 'tipe = ?' : null,
+      whereArgs: tipe != null ? [tipe] : null,
     );
     for (final row in rows) {
       final json = jsonDecode(row['json_data'] as String? ?? '{}') as Map<String, dynamic>;
@@ -1087,7 +1130,9 @@ class LocalDatabase {
       for (final item in pendingKeluarga) {
         try {
           final jsonData = jsonDecode(item['json_data'] as String) as Map<String, dynamic>;
-          final kepalaNik = jsonData['id_kepala_keluarga'] as String?;
+          // Dukung kedua key: payload lama (id_kepala_keluarga) & baru
+          // (nik_kepala_keluarga).
+          final kepalaNik = (jsonData['nik_kepala_keluarga'] ?? jsonData['id_kepala_keluarga']) as String?;
           if (kepalaNik != null && kepalaNik.isNotEmpty && !allNik.contains(kepalaNik)) {
             result.addIssue(
               tipe: 'Relasi',

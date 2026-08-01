@@ -1,18 +1,11 @@
 import 'penduduk_model.dart';
+import 'dasawisma_model.dart';
 
 int _parseInt(dynamic value) {
   if (value is int) return value;
   if (value is double) return value.toInt();
   if (value is String) return int.tryParse(value) ?? 0;
   return 0;
-}
-
-int? _parseIntNullable(dynamic value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is double) return value.toInt();
-  if (value is String) return int.tryParse(value);
-  return null;
 }
 
 class KeluargaModel {
@@ -86,8 +79,14 @@ class KeluargaModel {
   static List<PendudukModel> _parseAnggota(dynamic data) {
     if (data is List) {
       return data.map((e) {
-        if (e is Map<String, dynamic>) return PendudukModel.fromJson(e);
-        return PendudukModel.fromJson(e as Map<String, dynamic>);
+        final map = e as Map<String, dynamic>;
+        // Gabungkan relasi `warga` (nested) ke level atas agar cocok dengan
+        // PendudukModel.fromJson (kompatibel resource lama maupun baru).
+        final warga = map['warga'];
+        if (warga is Map<String, dynamic>) {
+          return PendudukModel.fromJson({...warga, ...map});
+        }
+        return PendudukModel.fromJson(map);
       }).toList();
     }
     return [];
@@ -121,28 +120,6 @@ class KelompokDasawismaMini {
   }
 }
 
-class DasawismaKeluargaData {
-  final int? jumlahBalita;
-  final int? jumlahIbuHamil;
-  final int? jumlahIbuMenyusui;
-  final int? jumlahStunting;
-  final int? jumlahLansia;
-
-  DasawismaKeluargaData({
-    this.jumlahBalita,
-    this.jumlahIbuHamil,
-    this.jumlahIbuMenyusui,
-    this.jumlahStunting,
-    this.jumlahLansia,
-  });
-
-  factory DasawismaKeluargaData.fromJson(Map<String, dynamic> json) {
-    return DasawismaKeluargaData(
-      jumlahBalita: _parseIntNullable(json['jumlah_balita']),
-      jumlahIbuHamil: _parseIntNullable(json['jumlah_ibu_hamil']),
-      jumlahIbuMenyusui: _parseIntNullable(json['jumlah_ibu_menyusui']),
-      jumlahStunting: _parseIntNullable(json['jumlah_stunting']),
-      jumlahLansia: _parseIntNullable(json['jumlah_lansia']),
-    );
-  }
-}
+// DasawismaKeluargaData dipakai dari dasawisma_model.dart (versi LENGKAP
+// berisi seluruh field kesehatan/sanitasi/UP2K) agar data yang tampil di
+// halaman keluarga identik dengan form Dasawisma Keluarga di website.

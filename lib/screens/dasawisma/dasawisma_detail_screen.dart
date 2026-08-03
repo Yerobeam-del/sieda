@@ -101,7 +101,7 @@ class _KelompokDetailScreenState extends State<KelompokDetailScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Actions — form Data Kesehatan Keluarga diakses per keluarga
+          // Actions — form Dasawisma Keluarga diakses per keluarga
           // (halaman Detail Keluarga) atau lewat tab Keluarga di Dasawisma.
           SizedBox(
             width: double.infinity,

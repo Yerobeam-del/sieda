@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
+import '../core/api/api_auth_stream.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../core/api/api_exception.dart';
@@ -21,6 +22,9 @@ class AuthProvider extends ChangeNotifier {
   final Completer<void> _readyCompleter = Completer<void>();
   Future<void> get ready => _readyCompleter.future;
 
+  /// Subscription ke event 401 global dari ApiClient — memicu force logout.
+  StreamSubscription<int>? _authSub;
+
   AuthStatus get status => _status;
   UserModel? get user => _user;
   ApiException? get error => _error;
@@ -29,7 +33,21 @@ class AuthProvider extends ChangeNotifier {
   bool get isUninitialized => _status == AuthStatus.uninitialized;
 
   AuthProvider() {
+    // Dengarkan event 401 dari mana pun (mis. request gagal di provider lain
+    // saat token kadaluarsa 30 hari di tengah pemakaian).
+    _authSub = ApiAuthStream.stream.listen((_) async {
+      // Hindari loop — hanya logout jika state saat ini authenticated.
+      if (_status == AuthStatus.authenticated) {
+        await _forceLogout();
+      }
+    });
     _initialize();
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _initialize() async {
@@ -102,11 +120,14 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Hapus token & data user, paksa status menjadi unauthenticated.
+  /// Dipanggil otomatis oleh ApiAuthStream saat endpoint mana pun mengembalikan 401
+  /// (token kedaluwarsa setelah 30 hari, atau dicabut dari server).
   Future<void> _forceLogout() async {
     await LocalStorage.deleteToken();
     await LocalStorage.deleteUserData();
     _user = null;
     _status = AuthStatus.unauthenticated;
+    notifyListeners(); // Wajib — UI (router guard) bereaksi & pindah ke LoginScreen
   }
 
   Future<bool> login(String email, String password, {bool remember = false}) async {
@@ -192,7 +213,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> updateProfile({String? name, String? username, String? email, String? password, String? passwordConfirmation}) async {
+  Future<bool> updateProfile({
+    String? name,
+    String? username,
+    String? email,
+    String? currentPassword,
+    String? password,
+    String? passwordConfirmation,
+  }) async {
     try {
       final token = await LocalStorage.getToken();
       if (token == null) return false;
@@ -202,6 +230,8 @@ class AuthProvider extends ChangeNotifier {
       if (username != null) data['username'] = username;
       if (email != null) data['email'] = email;
       if (password != null) {
+        // Backend kini mewajibkan current_password saat mengubah password
+        data['current_password'] = currentPassword;
         data['password'] = password;
         data['password_confirmation'] = passwordConfirmation ?? password;
       }

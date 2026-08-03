@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../core/api/api_exception.dart';
-import '../core/storage/local_storage.dart';
+import '../core/api/pagination_helper.dart';
 import '../database/local_database.dart';
+import '../core/storage/local_storage.dart';
 import '../models/penduduk_model.dart';
 import '../services/activity_service.dart';
 
@@ -149,23 +150,24 @@ class PendudukProvider extends ChangeNotifier {
     try {
       final token = await LocalStorage.getToken();
       final client = ApiClient(token: token!);
-      final queryParams = <String, dynamic>{
-        'page': 1,
-        'per_page': 'all',
-      };
+      final queryParams = <String, dynamic>{};
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
       if (_filterJenisKelamin != null) {
         queryParams['jenis_kelamin'] = _filterJenisKelamin;
       }
 
-      final response = await client.get(ApiEndpoints.penduduk, queryParameters: queryParams);
+      // Backend tidak lagi mendukung per_page=all — muat semua halaman via loop
+      final response = await fetchAllPages(
+        client,
+        ApiEndpoints.penduduk,
+        queryParameters: queryParams,
+      );
       final data = response['data'] as List<dynamic>;
       final meta = response['meta'] as Map<String, dynamic>?;
 
       _serverList = data.map((e) => PendudukModel.fromJson(e)).toList();
-      // Semua data sudah dimuat -> footer "Muat lebih banyak" tidak perlu lagi.
-      _currentPage = 1;
-      _lastPage = 1;
+      _currentPage = meta?['last_page'] as int? ?? 1;
+      _lastPage = meta?['last_page'] as int? ?? 1;
       _total = meta?['total'] ?? data.length;
 
       // Simpan seluruh list ke cache agar offline menampilkan data lengkap.

@@ -704,7 +704,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Data Kesehatan ──
+  // ── Dasawisma Keluarga ──
   Widget _buildKesehatanSection(BuildContext context, DashboardProvider prov) {
     final data = prov.dashboard!;
     final theme = Theme.of(context);
@@ -732,7 +732,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Icon(Icons.favorite_rounded, color: cs.primary, size: 20),
             const SizedBox(width: 8),
-            Text('Data Kesehatan', style: theme.textTheme.titleLarge),
+            Text('Dasawisma Keluarga', style: theme.textTheme.titleLarge),
           ],
         ),
         const SizedBox(height: 8),

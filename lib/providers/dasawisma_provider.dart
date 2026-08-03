@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../core/api/api_exception.dart';
+import '../core/api/pagination_helper.dart';
 import '../core/storage/local_storage.dart';
 import '../database/local_database.dart';
 import '../models/dasawisma_model.dart';
@@ -245,10 +246,15 @@ class DasawismaProvider extends ChangeNotifier {
     try {
       final token = await LocalStorage.getToken();
       final client = ApiClient(token: token!);
-      final params = <String, dynamic>{'per_page': 'all'};
+      final params = <String, dynamic>{};
       if (noKK != null) params['no_kk'] = noKK;
 
-      final response = await client.get(ApiEndpoints.dasawismaKeluarga, queryParameters: params);
+      // Backend tidak lagi mendukung per_page=all — muat semua halaman via loop
+      final response = await fetchAllPages(
+        client,
+        ApiEndpoints.dasawismaKeluarga,
+        queryParameters: params,
+      );
       final data = response['data'] as List<dynamic>;
       _serverDasawismaKeluargaList = data.map((e) => DasawismaKeluargaData.fromJson(e as Map<String, dynamic>)).toList();
     } on ApiException catch (e) {

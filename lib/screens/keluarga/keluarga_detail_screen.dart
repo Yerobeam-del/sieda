@@ -129,8 +129,8 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Data Kesehatan Keluarga (Dasawisma) — lihat/isi/edit/hapus.
-          _sectionTitle('Data Kesehatan Keluarga (Dasawisma)'),
+          // Dasawisma Keluarga — lihat/isi/edit/hapus.
+          _sectionTitle('Dasawisma Keluarga'),
           const SizedBox(height: 8),
           _dasawismaKeluargaSection(context, k.dasawismaKeluarga),
           const SizedBox(height: 16),
@@ -234,7 +234,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
     );
   }
 
-  /// Section Data Kesehatan Keluarga (Dasawisma) — mirror halaman
+  /// Section Dasawisma Keluarga — mirror halaman
   /// `/dasawisma-keluarga/show/{no_kk}` di website: tampilkan semua field,
   /// plus aksi isi/edit dan hapus (dengan dukungan offline).
   Widget _dasawismaKeluargaSection(BuildContext context, dynamic dkRaw) {
@@ -312,7 +312,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Data Kesehatan Keluarga', style: Theme.of(context).textTheme.titleSmall),
+                      Text('Dasawisma Keluarga', style: Theme.of(context).textTheme.titleSmall),
                       Text('Tahun ${dk.configYear}', style: TextStyle(fontSize: 11, color: AppTheme.textHintOf(context))),
                     ],
                   ),
@@ -320,12 +320,12 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
                 if (dk.isPendingSync) const Padding(padding: EdgeInsets.only(right: 6), child: PendingSyncBadge()),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit Data Kesehatan',
+                  tooltip: 'Edit Dasawisma Keluarga',
                   onPressed: () => _openDasawismaKeluargaForm(data: dk),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppTheme.error),
-                  tooltip: 'Hapus Data Kesehatan',
+                  tooltip: 'Hapus Dasawisma Keluarga',
                   onPressed: () => _confirmDeleteDasawismaKesehatan(dk),
                 ),
               ],
@@ -384,7 +384,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
             Text('Belum ada data kesehatan keluarga', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 4),
             Text(
-              'Isi Data Kesehatan Keluarga (Dasawisma) untuk melengkapi profil kesehatan keluarga ini.',
+              'Isi data Dasawisma Keluarga untuk melengkapi profil kesehatan keluarga ini.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)),
             ),
@@ -392,7 +392,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
             FilledButton.icon(
               onPressed: () => _openDasawismaKeluargaForm(),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Isi Data Kesehatan'),
+              label: const Text('Isi Dasawisma Keluarga'),
               style: FilledButton.styleFrom(backgroundColor: AppTheme.success),
             ),
           ],
@@ -424,7 +424,7 @@ class _KeluargaDetailScreenState extends State<KeluargaDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Data Kesehatan?'),
+        title: const Text('Hapus Dasawisma Keluarga?'),
         content: Text('Hapus data Dasawisma Keluarga untuk No. KK ${dk.noKK}?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),

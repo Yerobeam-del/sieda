@@ -119,7 +119,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
               child: FilledButton.icon(
                 onPressed: () => _openDasawismaKeluargaForm(p.noKk!),
                 icon: const Icon(Icons.health_and_safety_rounded, size: 18),
-                label: Text('Data Kesehatan Keluarga (No. KK ${p.noKk})'),
+                label: Text('Dasawisma Keluarga (No. KK ${p.noKk})'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.success,
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -151,7 +151,7 @@ class _PendudukDetailScreenState extends State<PendudukDetailScreen> {
     );
   }
 
-  /// Buka form Data Kesehatan Keluarga (Dasawisma) untuk No. KK keluarga
+  /// Buka form Dasawisma Keluarga untuk No. KK keluarga
   /// terkait. Data yang sudah tersimpan di-pre-fetch dulu agar form terbuka
   /// dalam mode edit — mencegah data lama tertimpa saat menyimpan.
   Future<void> _openDasawismaKeluargaForm(String noKk) async {

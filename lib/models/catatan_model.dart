@@ -193,35 +193,37 @@ class CatatanKelahiranKematianModel {
     );
   }
 
-  /// Payload untuk API — mengikuti skema tabel tp_pkk_catatan_ibu_anak
-  /// (data ibu/kelahiran/kematian). Dipakai untuk penyimpanan offline
-  /// (pending_catatan) & dikirim ulang oleh SyncService.
+  /// Payload untuk API — mengikuti kolom TEBEL catatan_kelahiran_kematian
+  /// yang sebenarnya (key FLAT: nama_bayi, status_kematian, id_group_dasawisma,
+  /// dst). Dipakai untuk penyimpanan offline (pending_catatan) & dikirim ulang
+  /// oleh SyncService. Hindari key prefixed (kelahiran_*/kematian_*) karena
+  /// bukan kolom DB → SQL error.
   Map<String, dynamic> toJson() => {
         'id': id,
         'id_warga_ibu': idWargaIbu,
         'id_warga_suami': idWargaSuami,
         'no_kk': noKk,
-        'id_kelompok_dasawisma': idGroupDasawisma,
+        'id_group_dasawisma': idGroupDasawisma,
         'status_ibu': statusIbu,
-        'tanggal_perkiraan_lahir': tanggalPerkiraanLahir,
+        // bulan_hamil: tidak dikirim lagi dari mobile — backend telah mengubah
+        // validasi max:10 (usia kehamilan), sementara mobile menggunakan
+        // tanggal_hamil (HPHT). Field di-parse dari JSON hanya untuk menampilkan
+        // data legacy dari server.
         'tanggal_hamil': tanggalHamil,
         'tanggal_melahirkan': tanggalMelahirkan,
         'tanggal_nifas_selesai': tanggalNifasSelesai,
-        'kelahiran_status': namaBayi != null && namaBayi!.isNotEmpty ? 'Ada' : null,
-        'kelahiran_nama_bayi': namaBayi,
-        'kelahiran_jenis_kelamin': jenisKelaminBayi,
-        'kelahiran_tanggal': tanggalLahirBayi,
-        'kelahiran_status_akte': akteKelahiran,
-        'kelahiran_no_akte': noAkteKelahiran,
-        'kematian_status': statusKematian,
-        'kematian_nama': namaMeninggal,
-        'kematian_jenis_kelamin': jenisKelaminMeninggal,
-        'kematian_tanggal': tanggalMeninggal,
-        'kematian_sebab': sebabMeninggal,
+        'nama_bayi': namaBayi,
+        'jenis_kelamin_bayi': jenisKelaminBayi,
+        'tanggal_lahir_bayi': tanggalLahirBayi,
+        'akte_kelahiran': akteKelahiran,
+        'no_akte_kelahiran': noAkteKelahiran,
+        'status_kematian': statusKematian,
+        'nama_meninggal': namaMeninggal,
+        'jenis_kelamin_meninggal': jenisKelaminMeninggal,
+        'tanggal_meninggal': tanggalMeninggal,
+        'sebab_meninggal': sebabMeninggal,
         'keterangan': keterangan,
         'config_year': configYear,
-        'nama_ibu': namaIbu,
-        'nama_suami': namaSuami,
       };
 
   // ============ Computed properties ============

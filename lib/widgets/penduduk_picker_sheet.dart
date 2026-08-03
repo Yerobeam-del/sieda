@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
+import '../core/api/pagination_helper.dart';
 import '../core/storage/local_storage.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/helpers.dart';
@@ -86,10 +87,10 @@ class _PendudukPickerSheetState extends State<PendudukPickerSheet> {
       try {
         final token = await LocalStorage.getToken();
         final client = ApiClient(token: token!);
-        final response = await client.get(
+        final response = await fetchAllPages(
+          client,
           ApiEndpoints.penduduk,
           queryParameters: {
-            'per_page': 'all',
             if (query.isNotEmpty) 'search': query,
           },
         );

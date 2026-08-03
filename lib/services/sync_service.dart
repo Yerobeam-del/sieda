@@ -133,6 +133,19 @@ class SyncService {
         final attempt = (item['retry_count'] as int? ?? 0) + 1;
         try {
           final data = _parseJson(item['json_data'] as String);
+
+          // Pre-sync validation: server memvalidasi no_kk exists di tp_pkk_keluarga
+          // (dan menurunkan id_group_dasawisma dari keluarga tersebut). Catatan yang
+          // merujuk keluarga yang masih pending harus DITUNDA sampai keluarga terkirim,
+          // persis seperti deferral anggota & dasawisma di bawah.
+          final noKk = data['no_kk'] as String?;
+          if (action != 'DELETE' && noKk != null && noKkKeluargaBelumSync.contains(noKk)) {
+            deferred++;
+            deferredItems.add('Catatan no_kk $noKk (menunggu keluarga tersinkronkan)');
+            debugPrint('[Sync] Tunda catatan no_kk $noKk: keluarga belum terkirim.');
+            continue;
+          }
+
           if (action == 'DELETE') {
             final catatanId = data['id'] as int? ?? 0;
             await client.delete(ApiEndpoints.catatanDetail(catatanId));

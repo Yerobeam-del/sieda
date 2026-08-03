@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'api_auth_stream.dart';
 import 'api_endpoints.dart';
 import 'api_exception.dart';
 
@@ -27,6 +28,17 @@ class ApiClient {
       responseBody: kDebugMode,
       error: kDebugMode,
       logPrint: (obj) => debugPrint('[API] $obj'),
+    ));
+
+    // Deteksi 401 global — publikasikan ke ApiAuthStream agar AuthProvider
+    // bisa memaksa logout walaupun request berasal dari provider mana pun.
+    _dio.interceptors.add(InterceptorsWrapper(
+      onError: (error, handler) {
+        if (error.response?.statusCode == 401) {
+          ApiAuthStream.emitUnauthorized();
+        }
+        handler.next(error);
+      },
     ));
   }
 

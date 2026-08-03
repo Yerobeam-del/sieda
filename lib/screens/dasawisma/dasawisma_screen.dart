@@ -70,7 +70,7 @@ class _DasawismaScreenState extends State<DasawismaScreen> with SingleTickerProv
                   backgroundColor: AppTheme.success,
                   foregroundColor: Colors.white,
                   icon: const Icon(Icons.add_rounded, size: 20),
-                  label: const Text('Data Kesehatan'),
+                  label: const Text('Dasawisma Keluarga'),
                 )
               : null,
       body: NestedScrollView(

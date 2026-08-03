@@ -140,26 +140,24 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
       'id_warga_suami': _nikSuamiController.text.trim().isNotEmpty ? _nikSuamiController.text.trim() : null,
       'no_kk': _noKkController.text.trim().isNotEmpty ? _noKkController.text.trim() : null,
       'status_ibu': _statusIbu,
-      'tanggal_perkiraan_lahir': _tanggalPerkiraanLahir != null
-          ? DateFormat('yyyy-MM-dd').format(_tanggalPerkiraanLahir!)
-          : null,
+      // HPHT ibu (untuk status hamil) — kolom DB tanggal_hamil
       'tanggal_hamil': _tanggalHamil != null
           ? DateFormat('yyyy-MM-dd').format(_tanggalHamil!)
           : null,
       'tanggal_melahirkan': _tanggalMelahirkanController.text.trim().isNotEmpty ? _tanggalMelahirkanController.text.trim() : null,
       'tanggal_nifas_selesai': _tanggalNifasController.text.trim().isNotEmpty ? _tanggalNifasController.text.trim() : null,
-      // Skema baru: data kelahiran & kematian berprefix kelahiran_*/kematian_*
-      'kelahiran_status': _namaBayiController.text.trim().isNotEmpty ? 'Ada' : null,
-      'kelahiran_nama_bayi': _namaBayiController.text.trim().isNotEmpty ? _namaBayiController.text.trim() : null,
-      'kelahiran_jenis_kelamin': _jenisKelaminBayi,
-      'kelahiran_tanggal': _tanggalLahirBayiController.text.trim().isNotEmpty ? _tanggalLahirBayiController.text.trim() : null,
-      'kelahiran_status_akte': _akteKelahiran,
-      'kelahiran_no_akte': _noAkteController.text.trim().isNotEmpty ? _noAkteController.text.trim() : null,
-      'kematian_status': _statusKematian,
-      'kematian_nama': _namaMeninggalController.text.trim().isNotEmpty ? _namaMeninggalController.text.trim() : null,
-      'kematian_jenis_kelamin': _jenisKelaminMeninggal,
-      'kematian_tanggal': _tanggalMeninggalController.text.trim().isNotEmpty ? _tanggalMeninggalController.text.trim() : null,
-      'kematian_sebab': _sebabMeninggalController.text.trim().isNotEmpty ? _sebabMeninggalController.text.trim() : null,
+      // Data kelahiran — key FLAT sesuai kolom tabel catatan_kelahiran_kematian
+      'nama_bayi': _namaBayiController.text.trim().isNotEmpty ? _namaBayiController.text.trim() : null,
+      'jenis_kelamin_bayi': _jenisKelaminBayi,
+      'tanggal_lahir_bayi': _tanggalLahirBayiController.text.trim().isNotEmpty ? _tanggalLahirBayiController.text.trim() : null,
+      'akte_kelahiran': _akteKelahiran,
+      'no_akte_kelahiran': _noAkteController.text.trim().isNotEmpty ? _noAkteController.text.trim() : null,
+      // Data kematian — key FLAT sesuai kolom DB
+      'status_kematian': _statusKematian,
+      'nama_meninggal': _namaMeninggalController.text.trim().isNotEmpty ? _namaMeninggalController.text.trim() : null,
+      'jenis_kelamin_meninggal': _jenisKelaminMeninggal,
+      'tanggal_meninggal': _tanggalMeninggalController.text.trim().isNotEmpty ? _tanggalMeninggalController.text.trim() : null,
+      'sebab_meninggal': _sebabMeninggalController.text.trim().isNotEmpty ? _sebabMeninggalController.text.trim() : null,
       'keterangan': _keteranganController.text.trim().isNotEmpty ? _keteranganController.text.trim() : null,
       'config_year': DateTime.now().year,
     };
@@ -334,7 +332,6 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
                   _statusChip('Hamil', 'hamil', Icons.favorite_rounded, AppTheme.female),
                   _statusChip('Melahirkan', 'melahirkan', Icons.child_care_rounded, AppTheme.success),
                   _statusChip('Nifas', 'nifas', Icons.healing_rounded, AppTheme.info),
-                  _statusChip('Meninggal', 'meninggal', Icons.warning_amber_rounded, AppTheme.error),
                 ],
               ),
               const SizedBox(height: 16),

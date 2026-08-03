@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../core/api/api_exception.dart';
+import '../core/api/pagination_helper.dart';
 import '../core/storage/local_storage.dart';
 import '../database/local_database.dart';
 import '../models/keluarga_model.dart';
@@ -171,21 +172,23 @@ class KeluargaProvider extends ChangeNotifier {
       final token = await LocalStorage.getToken();
       final client = ApiClient(token: token!);
       final queryParams = <String, dynamic>{
-        'page': 1,
-        'per_page': 'all',
         'with': 'kepala_keluarga,kelompok_dasawisma',
       };
       if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
       if (_filterIdDusun != null) queryParams['id_dusun'] = _filterIdDusun;
 
-      final response = await client.get(ApiEndpoints.keluarga, queryParameters: queryParams);
+      // Backend tidak lagi mendukung per_page=all — muat semua halaman via loop
+      final response = await fetchAllPages(
+        client,
+        ApiEndpoints.keluarga,
+        queryParameters: queryParams,
+      );
       final data = response['data'] as List<dynamic>;
       final meta = response['meta'] as Map<String, dynamic>?;
 
       _serverList = data.map((e) => KeluargaModel.fromJson(e)).toList();
-      // Semua data sudah dimuat -> footer "Muat lebih banyak" tidak perlu lagi.
-      _currentPage = 1;
-      _lastPage = 1;
+      _currentPage = meta?['last_page'] as int? ?? 1;
+      _lastPage = meta?['last_page'] as int? ?? 1;
       _total = meta?['total'] ?? data.length;
 
       // Simpan seluruh list ke cache agar offline menampilkan data lengkap.
